@@ -1,11 +1,13 @@
 import { MemCoolExplainer } from './lib/explanation/providers/memcool';
 import { OpenRouterExplainer } from './lib/explanation/providers/openrouter';
+import { GeminiExplainer } from './lib/explanation/providers/gemini';
 import { AnkiClient } from './lib/anki/client';
 import { formatExplanationToHtml } from './lib/anki/formatter';
 import { countWords } from './lib/text-utils';
 
 const memcool = new MemCoolExplainer();
 const openrouter = new OpenRouterExplainer();
+const gemini = new GeminiExplainer();
 const anki = new AnkiClient();
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -46,32 +48,71 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
 
-    chrome.storage.sync.get(['modelId'], (settings: { modelId?: string }) => {
-      const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
+            chrome.storage.sync.get(['modelId', 'openRouterApiKey', 'geminiApiKey'], (settings: { modelId?: string, openRouterApiKey?: string, geminiApiKey?: string }) => {
 
-      let explainer;
-      let actualModelId;
+              const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
 
-      if (modelId.startsWith('openrouter:')) {
-        explainer = openrouter;
-        actualModelId = modelId.replace('openrouter:', '');
-      } else if (modelId.startsWith('memcool:')) {
-        explainer = memcool;
-        actualModelId = modelId.replace('memcool:', '');
-      } else {
-        // Default to memcool for any legacy/unprefixed IDs
-        explainer = memcool;
-        actualModelId = modelId;
-      }
+              const openRouterApiKey = settings.openRouterApiKey;
 
-      explainer.explain(message.text, { modelId: actualModelId })
-        .then(result => sendResponse({ result }))
-        .catch(error => {
-          console.error('Explanation error:', error);
-          sendResponse({ error: error.message });
-        });
-    });
-    return true;
+              const geminiApiKey = settings.geminiApiKey;
+
+              
+
+              let explainer;
+
+              let actualModelId;
+
+                    const options: { apiKey?: string; modelId?: string } = {};
+
+              
+
+                    if (modelId.startsWith('openrouter:')) {
+
+                      explainer = openrouter;
+
+                      actualModelId = modelId.replace('openrouter:', '');
+
+                      options.apiKey = openRouterApiKey;
+
+                    } else if (modelId.startsWith('gemini:')) {
+
+                      explainer = gemini;
+
+                      actualModelId = modelId.replace('gemini:', '');
+
+                      options.apiKey = geminiApiKey;
+
+                    } else if (modelId.startsWith('memcool:')) {
+
+                explainer = memcool;
+
+                actualModelId = modelId.replace('memcool:', '');
+
+              } else {
+
+                // Default to memcool for any legacy/unprefixed IDs
+
+                explainer = memcool;
+
+                actualModelId = modelId;
+
+              }
+
+        
+
+              explainer.explain(message.text, { ...options, modelId: actualModelId })
+
+                .then(result => sendResponse({ result }))
+
+                .catch(error => {
+
+                  console.error('Explanation error:', error);
+
+                  sendResponse({ error: error.message });
+
+                });
+
+            });    return true;
   } else if (message.type === 'OPEN_SIDE_PANEL') {
     if (sender.tab?.id) {
       chrome.sidePanel.open({ tabId: sender.tab.id });

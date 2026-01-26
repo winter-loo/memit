@@ -6,24 +6,33 @@
     theme: string;
     preferredLanguage: string;
     modelId: string;
+    openRouterApiKey: string;
+    geminiApiKey: string;
   }
 
   let settings = $state<Settings>({
     ankiAutoSave: false,
     theme: 'light',
     preferredLanguage: 'zh-CN',
-    modelId: 'gemini-2.5-flash-lite'
+    modelId: 'memcool:gemini-2.5-flash-lite',
+    openRouterApiKey: '',
+    geminiApiKey: '',
   });
 
   let saved = $state(false);
 
   onMount(() => {
-    chrome.storage.sync.get(['ankiAutoSave', 'theme', 'preferredLanguage', 'modelId'], (result: Partial<Settings>) => {
-      settings.ankiAutoSave = result.ankiAutoSave ?? false;
-      settings.theme = result.theme ?? 'light';
-      settings.preferredLanguage = result.preferredLanguage ?? 'zh-CN';
-      settings.modelId = result.modelId ?? 'gemini-2.5-flash-lite';
-    });
+    chrome.storage.sync.get(
+      ['ankiAutoSave', 'theme', 'preferredLanguage', 'modelId', 'openRouterApiKey', 'geminiApiKey'],
+      (result: Partial<Settings>) => {
+        settings.ankiAutoSave = result.ankiAutoSave ?? false;
+        settings.theme = result.theme ?? 'light';
+        settings.preferredLanguage = result.preferredLanguage ?? 'zh-CN';
+        settings.modelId = result.modelId ?? 'memcool:gemini-2.5-flash-lite';
+        settings.openRouterApiKey = result.openRouterApiKey ?? '';
+        settings.geminiApiKey = result.geminiApiKey ?? '';
+      }
+    );
   });
 
   async function saveSettings() {
@@ -56,7 +65,7 @@
   <main>
     <section class="settings-card">
       <h2 class="section-title">General Preferences</h2>
-      
+
       <div class="setting-item">
         <div class="setting-info">
           <label for="theme">Appearance</label>
@@ -98,7 +107,7 @@
       <div class="setting-item">
         <div class="setting-info">
           <label for="model">AI Model</label>
-          <p class="description">Select the model to power your explanations. MemCool models are optimized for speed, while OpenRouter provides advanced alternatives.</p>
+          <p class="description">Select the model to power your explanations.</p>
         </div>
         <div class="setting-action">
           <select id="model" bind:value={settings.modelId}>
@@ -115,9 +124,58 @@
               <option value="openrouter:deepseek/deepseek-v3.2">DeepSeek V3.2</option>
               <option value="openrouter:x-ai/grok-code-fast-1">Grok Code Fast</option>
             </optgroup>
+            <optgroup label="Gemini">
+              <option value="gemini:gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini:gemini-2.0-flash">Gemini 2.0 Flash</option>
+              <option value="gemini:gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+              <option value="gemini:gemini-1.5-flash">Gemini 1.5 Flash</option>
+            </optgroup>
           </select>
         </div>
       </div>
+
+      {#if settings.modelId.startsWith('openrouter:')}
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="openrouter-api-key">OpenRouter API Key</label>
+            <p class="description">
+              Your personal API key from <a href="https://openrouter.ai/keys" target="_blank"
+                >openrouter.ai</a
+              >. Stored locally in your browser.
+            </p>
+          </div>
+          <div class="setting-action">
+            <input
+              type="password"
+              id="openrouter-api-key"
+              bind:value={settings.openRouterApiKey}
+              placeholder="sk-or-v1-..."
+            />
+          </div>
+        </div>
+      {/if}
+
+      {#if settings.modelId.startsWith('gemini:')}
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="gemini-api-key">Gemini API Key</label>
+            <p class="description">
+              Your personal API key from <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank">Google AI Studio</a
+              >. Stored locally in your browser.
+            </p>
+          </div>
+          <div class="setting-action">
+            <input
+              type="password"
+              id="gemini-api-key"
+              bind:value={settings.geminiApiKey}
+              placeholder="AIzaSy..."
+            />
+          </div>
+        </div>
+      {/if}
 
       <div class="footer">
         <button class="save-btn" onclick={saveSettings}>
@@ -241,7 +299,7 @@
     font-size: 0.9rem;
   }
 
-  input[type="checkbox"] {
+  input[type='checkbox'] {
     width: 20px;
     height: 20px;
     accent-color: var(--primary-color);

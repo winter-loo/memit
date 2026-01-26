@@ -1,22 +1,24 @@
+import { GoogleGenAI } from '@google/genai';
 import type { ContentExplainer, DictionaryResponse } from '../types';
 
-export interface OpenRouterOptions {
+export interface GeminiOptions {
   modelId?: string;
   apiKey?: string;
 }
 
-export class OpenRouterExplainer implements ContentExplainer {
-  id = 'openrouter';
-  name = 'OpenRouter';
-  private baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+export class GeminiExplainer implements ContentExplainer {
+  id = 'gemini';
+  name = 'Gemini';
 
-  async explain(text: string, options?: OpenRouterOptions): Promise<DictionaryResponse> {
-    const model = options?.modelId || 'google/gemini-2.5-flash-lite';
+  async explain(text: string, options?: GeminiOptions): Promise<DictionaryResponse> {
+    const model = options?.modelId || 'gemini-2.0-flash';
     const apiKey = options?.apiKey;
 
     if (!apiKey) {
-      throw new Error('OpenRouter API Key is missing. Please set it in the extension options.');
+      throw new Error('Gemini API Key is missing. Please set it in the extension options.');
     }
+
+    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `
         You are an advanced English dictionary and linguistic expert.
@@ -39,34 +41,14 @@ export class OpenRouterExplainer implements ContentExplainer {
     `;
 
     try {
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://github.com/ldd/memit',
-          'X-Title': 'Memit Extension'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        })
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error?.error?.message || `OpenRouter API error: ${response.statusText}`);
-      }
+      let content = response.text.trim();
 
-      const data = await response.json();
-      let content = data.choices[0].message.content.trim();
-
-      // Attempt to strip markdown code blocks if present
+      // Strip markdown code blocks if present
       if (content.startsWith('```json')) {
         content = content.substring(7);
       } else if (content.startsWith('```')) {
@@ -78,8 +60,8 @@ export class OpenRouterExplainer implements ContentExplainer {
 
       return JSON.parse(content.trim()) as DictionaryResponse;
     } catch (error) {
-      console.error('OpenRouter explanation error:', error);
-      throw error instanceof Error ? error : new Error('Failed to get explanation from OpenRouter');
+      console.error('Gemini explanation error:', error);
+      throw error instanceof Error ? error : new Error('Failed to get explanation from Gemini');
     }
   }
 }
