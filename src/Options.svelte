@@ -1,0 +1,268 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+
+  interface Settings {
+    ankiAutoSave: boolean;
+    theme: string;
+    preferredLanguage: string;
+    modelId: string;
+  }
+
+  let settings = $state<Settings>({
+    ankiAutoSave: false,
+    theme: 'light',
+    preferredLanguage: 'zh-CN',
+    modelId: 'gemini-2.5-flash-lite'
+  });
+
+  let saved = $state(false);
+
+  onMount(() => {
+    chrome.storage.sync.get(['ankiAutoSave', 'theme', 'preferredLanguage', 'modelId'], (result: Partial<Settings>) => {
+      settings.ankiAutoSave = result.ankiAutoSave ?? false;
+      settings.theme = result.theme ?? 'light';
+      settings.preferredLanguage = result.preferredLanguage ?? 'zh-CN';
+      settings.modelId = result.modelId ?? 'gemini-2.5-flash-lite';
+    });
+  });
+
+  async function saveSettings() {
+    await chrome.storage.sync.set(settings);
+    saved = true;
+    setTimeout(() => {
+      saved = false;
+    }, 2000);
+  }
+
+  $effect(() => {
+    if (settings.theme === 'light') {
+      document.body.classList.add('memit-light');
+    } else {
+      document.body.classList.remove('memit-light');
+    }
+  });
+</script>
+
+<div class="settings-layout">
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <span class="material-symbols-outlined">translate</span>
+      </div>
+      <h1 class="brand-name">memit settings</h1>
+    </div>
+  </header>
+
+  <main>
+    <section class="settings-card">
+      <h2 class="section-title">General Preferences</h2>
+      
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="theme">Appearance</label>
+          <p class="description">Choose between a dark academic or clean light theme.</p>
+        </div>
+        <div class="setting-action">
+          <select id="theme" bind:value={settings.theme}>
+            <option value="dark">Dark (Orange Memory)</option>
+            <option value="light">Light (Clean)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="auto-save">Auto-save to Anki</label>
+          <p class="description">Automatically create a note in Anki after every lookup.</p>
+        </div>
+        <div class="setting-action">
+          <input type="checkbox" id="auto-save" bind:checked={settings.ankiAutoSave} />
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="language">Target Language</label>
+          <p class="description">The language to provide translations in.</p>
+        </div>
+        <div class="setting-action">
+          <select id="language" bind:value={settings.preferredLanguage}>
+            <option value="zh-CN">Chinese (Simplified)</option>
+            <option value="zh-TW">Chinese (Traditional)</option>
+            <option value="en">English</option>
+            <option value="ja">Japanese</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="model">AI Model</label>
+          <p class="description">Select the model to power your explanations.</p>
+        </div>
+        <div class="setting-action">
+          <select id="model" bind:value={settings.modelId}>
+            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="footer">
+        <button class="save-btn" onclick={saveSettings}>
+          {#if saved}
+            <span class="material-symbols-outlined">check</span>
+            Saved!
+          {:else}
+            Save Changes
+          {/if}
+        </button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<style>
+  .settings-layout {
+    min-height: 100vh;
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--bg-dark);
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .brand-icon {
+    background: rgba(242, 139, 13, 0.1);
+    color: var(--primary-color);
+    padding: 0.6rem;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .brand-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+  }
+
+  main {
+    flex: 1;
+    padding: 3rem 2rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .settings-card {
+    background: var(--bg-dark);
+    width: 100%;
+    max-width: 800px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+  }
+
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+
+  .setting-info {
+    flex: 1;
+  }
+
+  label {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  select {
+    background: var(--card-bg);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+  }
+
+  .footer {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .save-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    transition: all var(--transition-fast);
+  }
+
+  .save-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  .save-btn:active {
+    transform: translateY(0);
+  }
+</style>
