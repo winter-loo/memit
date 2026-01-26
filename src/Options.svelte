@@ -98,12 +98,23 @@
       <div class="setting-item">
         <div class="setting-info">
           <label for="model">AI Model</label>
-          <p class="description">Select the model to power your explanations.</p>
+          <p class="description">Select the model to power your explanations. MemCool models are optimized for speed, while OpenRouter provides advanced alternatives.</p>
         </div>
         <div class="setting-action">
           <select id="model" bind:value={settings.modelId}>
-            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <optgroup label="BuiltIn">
+              <option value="memcool:gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+              <option value="memcool:gemini-2.5-flash">Gemini 2.5 Flash</option>
+            </optgroup>
+            <optgroup label="OpenRouter">
+              <option value="openrouter:openai/gpt-oss-120b">GPT OSS 120B</option>
+              <option value="openrouter:google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
+              <option value="openrouter:google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+              <option value="openrouter:xiaomi/mimo-v2-flash:free">Mimo V2 Flash (Free)</option>
+              <option value="openrouter:x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
+              <option value="openrouter:deepseek/deepseek-v3.2">DeepSeek V3.2</option>
+              <option value="openrouter:x-ai/grok-code-fast-1">Grok Code Fast</option>
+            </optgroup>
           </select>
         </div>
       </div>

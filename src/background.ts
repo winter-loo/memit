@@ -1,9 +1,11 @@
 import { MemCoolExplainer } from './lib/explanation/providers/memcool';
+import { OpenRouterExplainer } from './lib/explanation/providers/openrouter';
 import { AnkiClient } from './lib/anki/client';
 import { formatExplanationToHtml } from './lib/anki/formatter';
 import { countWords } from './lib/text-utils';
 
-const explainer = new MemCoolExplainer();
+const memcool = new MemCoolExplainer();
+const openrouter = new OpenRouterExplainer();
 const anki = new AnkiClient();
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -19,7 +21,7 @@ chrome.runtime.onInstalled.addListener(() => {
       chrome.storage.sync.set({ theme: 'light' });
     }
     if (!result.modelId) {
-      chrome.storage.sync.set({ modelId: 'gemini-2.5-flash-lite' });
+      chrome.storage.sync.set({ modelId: 'memcool:gemini-2.5-flash-lite' });
     }
   });
 });
@@ -27,11 +29,11 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'mem-it' && tab?.id) {
     console.log('Mem it clicked:', info.selectionText);
-    
+
     // Send message to content script to open modal
-    chrome.tabs.sendMessage(tab.id, { 
-      type: 'OPEN_MODAL', 
-      text: info.selectionText 
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'OPEN_MODAL',
+      text: info.selectionText
     });
   }
 });
@@ -45,10 +47,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     chrome.storage.sync.get(['modelId'], (settings: { modelId?: string }) => {
-      const modelId = settings.modelId || 'gemini-2.5-flash-lite';
-      explainer.explain(message.text, { modelId })
+      const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
+
+      let explainer;
+      let actualModelId;
+
+      if (modelId.startsWith('openrouter:')) {
+        explainer = openrouter;
+        actualModelId = modelId.replace('openrouter:', '');
+      } else if (modelId.startsWith('memcool:')) {
+        explainer = memcool;
+        actualModelId = modelId.replace('memcool:', '');
+      } else {
+        // Default to memcool for any legacy/unprefixed IDs
+        explainer = memcool;
+        actualModelId = modelId;
+      }
+
+      explainer.explain(message.text, { modelId: actualModelId })
         .then(result => sendResponse({ result }))
-        .catch(error => sendResponse({ error: error.message }));
+        .catch(error => {
+          console.error('Explanation error:', error);
+          sendResponse({ error: error.message });
+        });
     });
     return true;
   } else if (message.type === 'OPEN_SIDE_PANEL') {

@@ -40,7 +40,6 @@
     "vitest": "^4.0.17"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.91.0",
-    "pdfjs-dist": "^5.4.530"
+    "@openrouter/sdk": "^0.4.0"
   }
 }
