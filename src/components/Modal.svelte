@@ -10,13 +10,18 @@
     isLoading?: boolean;
     error?: string;
     isProviderError?: boolean;
+    text?: string;
     modelId?: string;
     openRouterApiKey?: string;
     geminiApiKey?: string;
     responseTimeout?: number;
     onClose?: () => void;
     onSave?: () => void;
-    onRetry?: (newModelId: string, apiKeys: { openRouter?: string; gemini?: string }) => void;
+    onRetry?: (
+      newModelId: string,
+      apiKeys: { openRouter?: string; gemini?: string },
+      newText?: string
+    ) => void;
     isSaving?: boolean;
     isRetrying?: boolean;
     saveError?: string;
@@ -28,6 +33,7 @@
     isLoading = false,
     error = '',
     isProviderError = false,
+    text = '',
     modelId = '',
     openRouterApiKey = '',
     geminiApiKey = '',
@@ -55,6 +61,8 @@
   let localOpenRouterApiKey = $state('');
   // eslint-disable-next-line svelte/prefer-writable-derived
   let localGeminiApiKey = $state('');
+  // eslint-disable-next-line svelte/prefer-writable-derived
+  let localText = $state('');
 
   // Sync state if props change externally
   $effect(() => {
@@ -65,6 +73,9 @@
   });
   $effect(() => {
     localGeminiApiKey = geminiApiKey;
+  });
+  $effect(() => {
+    localText = text;
   });
 
   let showFallback = $state(false);
@@ -241,6 +252,33 @@
               Try Again
             </button>
           {/if}
+        {:else if error.toLowerCase().includes('too long')}
+          <div class="text-shortener">
+            <label for="error-text-shorten">Shorten your selection:</label>
+            <textarea
+              id="error-text-shorten"
+              bind:value={localText}
+              placeholder="Edit your selection here..."
+              rows="4"
+            ></textarea>
+            {#if onRetry}
+              <button
+                class="retry-btn"
+                onclick={() =>
+                  onRetry?.(
+                    localModelId,
+                    {
+                      openRouter: localOpenRouterApiKey,
+                      gemini: localGeminiApiKey,
+                    },
+                    localText
+                  )}
+              >
+                <span class="material-symbols-outlined">refresh</span>
+                Try Again with New Text
+              </button>
+            {/if}
+          </div>
         {/if}
 
         <p class="error-message">{error}</p>
@@ -435,7 +473,8 @@
   }
 
   .model-selector,
-  .api-key-input {
+  .api-key-input,
+  .text-shortener {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
@@ -445,6 +484,10 @@
     text-align: left;
   }
 
+  .text-shortener {
+    max-width: 320px;
+  }
+
   .model-selector.compact,
   .api-key-input.compact {
     margin-top: 0;
@@ -452,14 +495,16 @@
   }
 
   .model-selector label,
-  .api-key-input label {
+  .api-key-input label,
+  .text-shortener label {
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
   }
 
   .model-selector select,
-  .api-key-input input {
+  .api-key-input input,
+  .text-shortener textarea {
     background: var(--card-bg);
     color: var(--text-main);
     border: 1px solid var(--border-color);
@@ -467,6 +512,11 @@
     border-radius: var(--radius-md);
     font-family: inherit;
     font-size: 14px;
+  }
+
+  .text-shortener textarea {
+    resize: vertical;
+    line-height: 1.5;
   }
 
   .model-selector.compact select,

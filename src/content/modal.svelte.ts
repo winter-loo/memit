@@ -16,6 +16,7 @@ interface ModalProps {
   isLoading: boolean;
   error: string;
   isProviderError: boolean;
+  text: string;
   modelId: string;
   openRouterApiKey: string;
   geminiApiKey: string;
@@ -26,7 +27,11 @@ interface ModalProps {
   isSaved: boolean;
   onClose: () => void;
   onSave?: () => void;
-  onRetry: (newModelId: string, apiKeys: { openRouter?: string; gemini?: string }) => void;
+  onRetry: (
+    newModelId: string,
+    apiKeys: { openRouter?: string; gemini?: string },
+    newText?: string
+  ) => void;
 }
 
 // Reactive state for modal props
@@ -35,6 +40,7 @@ const modalProps = $state<ModalProps>({
   isLoading: false,
   error: '',
   isProviderError: false,
+  text: '',
   modelId: 'memcool:gemini-2.5-flash-lite',
   openRouterApiKey: '',
   geminiApiKey: '',
@@ -44,7 +50,22 @@ const modalProps = $state<ModalProps>({
   saveError: '',
   isSaved: false,
   onClose: () => hideModal(),
-  onRetry: (newModelId: string, apiKeys: { openRouter?: string; gemini?: string }) => {
+  onRetry: (
+    newModelId: string,
+    apiKeys: { openRouter?: string; gemini?: string },
+    newText?: string
+  ) => {
+    const textToUse = newText !== undefined ? newText : modalProps.text;
+    const wordCount = countWords(textToUse);
+    const maxWords = 20;
+
+    if (wordCount > maxWords) {
+      modalProps.error = `Selection too long (${wordCount} words). Please select less than ${maxWords} words.`;
+      modalProps.isProviderError = false;
+      modalProps.text = textToUse; // Update the text in props so it shows in textarea
+      return;
+    }
+
     modalProps.isRetrying = true;
     modalProps.error = '';
 
@@ -59,14 +80,14 @@ const modalProps = $state<ModalProps>({
         modalProps.isRetrying = false;
         modalProps.isLoading = true;
         modalProps.modelId = newModelId;
+        modalProps.text = textToUse;
 
-        // Manual sync for immediate response, though storage listener will also catch it
+        // Manual sync for immediate response
         if (apiKeys.openRouter !== undefined) modalProps.openRouterApiKey = apiKeys.openRouter;
         if (apiKeys.gemini !== undefined) modalProps.geminiApiKey = apiKeys.gemini;
 
-        const text = (window.getSelection()?.toString() || '').trim();
-        if (text) fetchExplanation(text, newModelId);
-      }, 200);
+        if (textToUse) fetchExplanation(textToUse, newModelId);
+      }, 1500);
     });
   },
 });
@@ -153,6 +174,7 @@ export function openModal(text: string) {
 
   // Reset modal state
   modalProps.result = undefined;
+  modalProps.text = text;
   modalProps.error = '';
   modalProps.isLoading = false;
   modalProps.isRetrying = false;
