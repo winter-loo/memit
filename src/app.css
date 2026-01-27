@@ -1,6 +1,8 @@
 .memit-root {
-  all: initial;
-  display: block;
+  all: initial; /* SYSTEMATIC RESET: Ignore all host website styles */
+  display: block; /* Restore display from initial */
+
+  /* Orange Memory Theme Tokens (Dark - Default) */
   --primary-color: #f28b0d;
   --accent-orange: #f28b0d;
   --bg-dark: #0d151d;
@@ -8,32 +10,46 @@
   --bg-main: var(--bg-deep);
   --bg-header: #0d151d;
   --card-bg: #111a24;
-  --card-bg-accent: #16212b;
+  --card-bg-accent: #16212b; /* For definition card in dark */
   --border-color: #1e2e3d;
+
   --text-main: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
+
   --success-color: #10b981;
   --error-color: #ef4444;
   --error-bg: rgba(239, 68, 68, 0.1);
   --error-border: rgba(239, 68, 68, 0.2);
+
   --skeleton-shimmer: #253545;
+
+  /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
+
+  /* Typography */
   --font-sans: 'Lexend', system-ui, -apple-system, sans-serif;
+
+  /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-base: 0.25s ease;
+
+  /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.6);
+
+  /* Geometry */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
+
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
@@ -43,7 +59,7 @@
 }
 
 .memit-root * {
-  all: revert;
+  all: revert; /* Restore standard behavior for children (divs, buttons, etc) */
   box-sizing: border-box;
 }
 
@@ -55,12 +71,15 @@
   --bg-main: var(--bg-deep);
   --bg-header: #f8f9fa;
   --card-bg: #ffffff;
-  --card-bg-accent: #fff8f0;
+  --card-bg-accent: #fff8f0; /* Orange-tint for definition card */
   --border-color: #e5e7eb;
-  --text-main: #2d3436;
+
+  --text-main: #2d3436; /* Charcoal */
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
+
   --skeleton-shimmer: #ffffff;
+
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.1);
@@ -81,45 +100,14 @@
   cursor: pointer;
 }
 
-/* Lucide Icon Utilities */
-.memit-root .icon-orange {
-  color: var(--primary-color) !important;
-  stroke: var(--primary-color) !important;
-}
-
-.memit-root .spinning {
-  animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Custom Scrollbar */
 .memit-root .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
-
 .memit-root .custom-scrollbar::-webkit-scrollbar-track {
   background: var(--bg-dark);
 }
-
 .memit-root .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 10px;
-}
-
-/* Result Highlighting */
-.memit-root .highlight {
-  color: var(--primary-color);
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: rgba(242, 139, 13, 0.4);
-  text-underline-offset: 4px;
-  text-decoration-thickness: 2px;
 }
