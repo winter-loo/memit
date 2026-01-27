@@ -14,19 +14,19 @@ export default ts.config(
       globals: {
         ...globals.browser,
         ...globals.node,
-        chrome: 'readonly'
-      }
-    }
+        chrome: 'readonly',
+      },
+    },
   },
   {
-    files: ['**/*.svelte'],
+    files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
       parserOptions: {
-        parser: ts.parser
-      }
-    }
+        parser: ts.parser,
+      },
+    },
   },
   {
-    ignores: ['dist/', 'node_modules/', '.vscode/', 'coverage/']
+    ignores: ['dist/', 'node_modules/', '.vscode/', 'coverage/'],
   }
 );

@@ -8,7 +8,7 @@ describe('Modal Component', () => {
     word: 'eschew',
     simple_definition: 'avoid',
     detailed_explanation: '...',
-    in_chinese: '避开'
+    in_chinese: '避开',
   };
 
   it('should render brand and word info', () => {
@@ -20,11 +20,11 @@ describe('Modal Component', () => {
   it('should render close button and call onClose when clicked', async () => {
     const onClose = vi.fn();
     render(Modal, { result: mockResult, onClose });
-    
+
     // Selecting by title because there are multiple buttons and title is unique for "Close"
     const closeButton = screen.getByTitle(/Close/i);
     expect(closeButton).toBeInTheDocument();
-    
+
     await fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalled();
   });
@@ -32,10 +32,10 @@ describe('Modal Component', () => {
   it('should call onSave when save button is clicked', async () => {
     const onSave = vi.fn();
     render(Modal, { result: mockResult, onSave });
-    
+
     const saveButton = screen.getByTitle(/Save to Anki/i);
     expect(saveButton).toBeInTheDocument();
-    
+
     await fireEvent.click(saveButton);
     expect(onSave).toHaveBeenCalled();
   });

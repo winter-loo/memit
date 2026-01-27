@@ -8,10 +8,10 @@ describe('Explanation Types', () => {
       word: 'test',
       simple_definition: 'def',
       detailed_explanation: 'det',
-      in_chinese: 'cn'
+      in_chinese: 'cn',
     };
     const explainer: Partial<ContentExplainer> = { id: 'test' };
-    
+
     expect(response.word).toBe('test');
     expect(explainer.id).toBe('test');
   });

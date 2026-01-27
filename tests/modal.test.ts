@@ -6,23 +6,23 @@ const chromeMock = {
   runtime: {
     sendMessage: vi.fn(),
     onMessage: {
-      addListener: vi.fn()
-    }
+      addListener: vi.fn(),
+    },
   },
   storage: {
     sync: {
-      get: vi.fn((keys, callback) => callback?.({}))
+      get: vi.fn((keys, callback) => callback?.({})),
     },
     onChanged: {
-      addListener: vi.fn()
-    }
-  }
+      addListener: vi.fn(),
+    },
+  },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 global.chrome = chromeMock as any;
 
-import { openModal, hideModal } from '../src/content/modal';
+import { openModal, hideModal } from '../src/content/modal.svelte';
 
 describe('Modal Content Script', () => {
   beforeEach(() => {

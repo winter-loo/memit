@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { MODEL_GROUPS } from './lib/explanation/models';
 
   interface Settings {
     ankiAutoSave: boolean;
@@ -8,6 +9,7 @@
     modelId: string;
     openRouterApiKey: string;
     geminiApiKey: string;
+    responseTimeout: number;
   }
 
   let settings = $state<Settings>({
@@ -17,13 +19,22 @@
     modelId: 'memcool:gemini-2.5-flash-lite',
     openRouterApiKey: '',
     geminiApiKey: '',
+    responseTimeout: 5,
   });
 
   let saved = $state(false);
 
   onMount(() => {
     chrome.storage.sync.get(
-      ['ankiAutoSave', 'theme', 'preferredLanguage', 'modelId', 'openRouterApiKey', 'geminiApiKey'],
+      [
+        'ankiAutoSave',
+        'theme',
+        'preferredLanguage',
+        'modelId',
+        'openRouterApiKey',
+        'geminiApiKey',
+        'responseTimeout',
+      ],
       (result: Partial<Settings>) => {
         settings.ankiAutoSave = result.ankiAutoSave ?? false;
         settings.theme = result.theme ?? 'light';
@@ -31,8 +42,27 @@
         settings.modelId = result.modelId ?? 'memcool:gemini-2.5-flash-lite';
         settings.openRouterApiKey = result.openRouterApiKey ?? '';
         settings.geminiApiKey = result.geminiApiKey ?? '';
+        settings.responseTimeout = result.responseTimeout ?? 5;
       }
     );
+
+    const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'sync') {
+        if (changes.modelId) settings.modelId = changes.modelId.newValue as string;
+        if (changes.ankiAutoSave) settings.ankiAutoSave = changes.ankiAutoSave.newValue as boolean;
+        if (changes.theme) settings.theme = changes.theme.newValue as string;
+        if (changes.preferredLanguage)
+          settings.preferredLanguage = changes.preferredLanguage.newValue as string;
+        if (changes.openRouterApiKey)
+          settings.openRouterApiKey = changes.openRouterApiKey.newValue as string;
+        if (changes.geminiApiKey) settings.geminiApiKey = changes.geminiApiKey.newValue as string;
+        if (changes.responseTimeout)
+          settings.responseTimeout = changes.responseTimeout.newValue as number;
+      }
+    };
+
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
   });
 
   async function saveSettings() {
@@ -106,30 +136,36 @@
 
       <div class="setting-item">
         <div class="setting-info">
+          <label for="timeout">Response Timeout (seconds)</label>
+          <p class="description">How long to wait before showing the 'Stop and Retry' option.</p>
+        </div>
+        <div class="setting-action">
+          <input
+            type="number"
+            id="timeout"
+            bind:value={settings.responseTimeout}
+            min="1"
+            max="30"
+            step="1"
+            style="width: 80px;"
+          />
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
           <label for="model">AI Model</label>
           <p class="description">Select the model to power your explanations.</p>
         </div>
         <div class="setting-action">
           <select id="model" bind:value={settings.modelId}>
-            <optgroup label="BuiltIn">
-              <option value="memcool:gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-              <option value="memcool:gemini-2.5-flash">Gemini 2.5 Flash</option>
-            </optgroup>
-            <optgroup label="OpenRouter">
-              <option value="openrouter:openai/gpt-oss-120b">GPT OSS 120B</option>
-              <option value="openrouter:google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
-              <option value="openrouter:google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-              <option value="openrouter:xiaomi/mimo-v2-flash:free">Mimo V2 Flash (Free)</option>
-              <option value="openrouter:x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
-              <option value="openrouter:deepseek/deepseek-v3.2">DeepSeek V3.2</option>
-              <option value="openrouter:x-ai/grok-code-fast-1">Grok Code Fast</option>
-            </optgroup>
-            <optgroup label="Gemini">
-              <option value="gemini:gemini-2.5-flash">Gemini 2.5 Flash</option>
-              <option value="gemini:gemini-2.0-flash">Gemini 2.0 Flash</option>
-              <option value="gemini:gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
-              <option value="gemini:gemini-1.5-flash">Gemini 1.5 Flash</option>
-            </optgroup>
+            {#each MODEL_GROUPS as group (group.label)}
+              <optgroup label={group.label}>
+                {#each group.models as model (model.id)}
+                  <option value={model.id}>{model.name}</option>
+                {/each}
+              </optgroup>
+            {/each}
           </select>
         </div>
       </div>

@@ -42,20 +42,20 @@ export class OpenRouterExplainer implements ContentExplainer {
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://github.com/ldd/memit',
-          'X-Title': 'Memit Extension'
+          'X-Title': 'Memit Extension',
         },
         body: JSON.stringify({
           model: model,
           messages: [
             {
               role: 'user',
-              content: prompt
-            }
-          ]
-        })
+              content: prompt,
+            },
+          ],
+        }),
       });
 
       if (!response.ok) {

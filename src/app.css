@@ -9,11 +9,11 @@
   --card-bg: #111a24;
   --card-bg-accent: #16212b; /* For definition card in dark */
   --border-color: #1e2e3d;
-  
+
   --text-main: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  
+
   --success-color: #10b981;
   --error-color: #ef4444;
   --error-bg: rgba(239, 68, 68, 0.1);
@@ -30,15 +30,15 @@
 
   /* Typography */
   --font-sans: 'Lexend', system-ui, -apple-system, sans-serif;
-  
+
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-base: 0.25s ease;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 20px 50px rgba(0,0,0,0.6);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.6);
 
   /* Geometry */
   --radius-sm: 0.25rem;
@@ -56,36 +56,36 @@
 }
 
 .memit-root.memit-light {
-  --primary-color: #FF8C00;
-  --accent-orange: #FF8C00;
-  --bg-dark: #FFFFFF;
-  --bg-deep: #F8F9FA;
+  --primary-color: #ff8c00;
+  --accent-orange: #ff8c00;
+  --bg-dark: #ffffff;
+  --bg-deep: #f8f9fa;
   --bg-main: var(--bg-deep);
-  --bg-header: #F8F9FA;
-  --card-bg: #FFFFFF;
-  --card-bg-accent: #FFF8F0; /* Orange-tint for definition card */
-  --border-color: #E5E7EB;
-  
-  --text-main: #2D3436; /* Charcoal */
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
+  --bg-header: #f8f9fa;
+  --card-bg: #ffffff;
+  --card-bg-accent: #fff8f0; /* Orange-tint for definition card */
+  --border-color: #e5e7eb;
 
-  --skeleton-shimmer: #FFFFFF;
+  --text-main: #2d3436; /* Charcoal */
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --skeleton-shimmer: #ffffff;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 20px 50px rgba(0,0,0,0.1);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.1);
 }
 
 .memit-root * {
   box-sizing: border-box;
 }
 
-.memit-root h1, 
-.memit-root h2, 
-.memit-root h3, 
-.memit-root h4, 
-.memit-root h5, 
+.memit-root h1,
+.memit-root h2,
+.memit-root h3,
+.memit-root h4,
+.memit-root h5,
 .memit-root h6 {
   margin: 0;
   color: var(--text-main);

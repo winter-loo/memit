@@ -12,12 +12,12 @@ export function formatExplanationToHtml(data: DictionaryResponse): string {
 
   html += `<p><strong>Definition:</strong> ${data.simple_definition}</p>`;
   html += `<p><strong>Translation:</strong> ${data.in_chinese}</p>`;
-  
+
   html += `<hr><p>${data.detailed_explanation}</p>`;
 
   if (data.examples && data.examples.length > 0) {
     html += '<h3>Examples</h3><ul>';
-    data.examples.forEach(ex => html += `<li>${ex}</li>`);
+    data.examples.forEach((ex) => (html += `<li>${ex}</li>`));
     html += '</ul>';
   }
 

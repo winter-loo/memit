@@ -11,17 +11,19 @@ describe('MemCoolExplainer', () => {
   it('should explain text correctly', async () => {
     const mockResponse = {
       ok: true,
-      json: () => Promise.resolve({
-        word: 'test',
-        simple_definition: 'a procedure intended to establish the quality, performance, or reliability of something',
-        detailed_explanation: 'A detailed explanation...',
-        in_chinese: '测试'
-      })
+      json: () =>
+        Promise.resolve({
+          word: 'test',
+          simple_definition:
+            'a procedure intended to establish the quality, performance, or reliability of something',
+          detailed_explanation: 'A detailed explanation...',
+          in_chinese: '测试',
+        }),
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
     const result = await explainer.explain('test');
-    
+
     expect(result.word).toBe('test');
     expect(result.in_chinese).toBe('测试');
     expect(fetch).toHaveBeenCalledWith('https://mem.ldd.cool/explain/test');
@@ -30,7 +32,7 @@ describe('MemCoolExplainer', () => {
   it('should handle URL encoding', async () => {
     const mockResponse = {
       ok: true,
-      json: () => Promise.resolve({})
+      json: () => Promise.resolve({}),
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
@@ -43,7 +45,7 @@ describe('MemCoolExplainer', () => {
       ok: false,
       status: 429,
       statusText: 'Too Many Requests',
-      text: () => Promise.resolve('{"error": "Quota exceeded"}')
+      text: () => Promise.resolve('{"error": "Quota exceeded"}'),
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
@@ -55,7 +57,7 @@ describe('MemCoolExplainer', () => {
       ok: false,
       status: 404,
       statusText: 'Not Found',
-      text: () => Promise.resolve('')
+      text: () => Promise.resolve(''),
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
@@ -65,7 +67,7 @@ describe('MemCoolExplainer', () => {
   it('should include modelId in URL if provided', async () => {
     const mockResponse = {
       ok: true,
-      json: () => Promise.resolve({ word: 'test' })
+      json: () => Promise.resolve({ word: 'test' }),
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 

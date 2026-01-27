@@ -35,7 +35,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     // Send message to content script to open modal
     chrome.tabs.sendMessage(tab.id, {
       type: 'OPEN_MODAL',
-      text: info.selectionText
+      text: info.selectionText,
     });
   }
 });
@@ -48,80 +48,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
 
-            chrome.storage.sync.get(['modelId', 'openRouterApiKey', 'geminiApiKey'], (settings: { modelId?: string, openRouterApiKey?: string, geminiApiKey?: string }) => {
+    chrome.storage.sync.get(
+      ['modelId', 'openRouterApiKey', 'geminiApiKey'],
+      (settings: { modelId?: string; openRouterApiKey?: string; geminiApiKey?: string }) => {
+        const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
 
-              const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
+        const openRouterApiKey = settings.openRouterApiKey;
 
-              const openRouterApiKey = settings.openRouterApiKey;
+        const geminiApiKey = settings.geminiApiKey;
 
-              const geminiApiKey = settings.geminiApiKey;
+        let explainer;
 
-              
+        let actualModelId;
 
-              let explainer;
+        const options: { apiKey?: string; modelId?: string } = {};
 
-              let actualModelId;
+        if (modelId.startsWith('openrouter:')) {
+          explainer = openrouter;
 
-                    const options: { apiKey?: string; modelId?: string } = {};
+          actualModelId = modelId.replace('openrouter:', '');
 
-              
+          options.apiKey = openRouterApiKey;
+        } else if (modelId.startsWith('gemini:')) {
+          explainer = gemini;
 
-                    if (modelId.startsWith('openrouter:')) {
+          actualModelId = modelId.replace('gemini:', '');
 
-                      explainer = openrouter;
+          options.apiKey = geminiApiKey;
+        } else if (modelId.startsWith('memcool:')) {
+          explainer = memcool;
 
-                      actualModelId = modelId.replace('openrouter:', '');
+          actualModelId = modelId.replace('memcool:', '');
+        } else {
+          // Default to memcool for any legacy/unprefixed IDs
 
-                      options.apiKey = openRouterApiKey;
+          explainer = memcool;
 
-                    } else if (modelId.startsWith('gemini:')) {
+          actualModelId = modelId;
+        }
 
-                      explainer = gemini;
+        explainer
+          .explain(message.text, { ...options, modelId: actualModelId })
 
-                      actualModelId = modelId.replace('gemini:', '');
+          .then((result) => sendResponse({ result }))
 
-                      options.apiKey = geminiApiKey;
+          .catch((error) => {
+            console.error('Explanation error:', error);
 
-                    } else if (modelId.startsWith('memcool:')) {
-
-                explainer = memcool;
-
-                actualModelId = modelId.replace('memcool:', '');
-
-              } else {
-
-                // Default to memcool for any legacy/unprefixed IDs
-
-                explainer = memcool;
-
-                actualModelId = modelId;
-
-              }
-
-        
-
-              explainer.explain(message.text, { ...options, modelId: actualModelId })
-
-                .then(result => sendResponse({ result }))
-
-                .catch(error => {
-
-                  console.error('Explanation error:', error);
-
-                  sendResponse({ error: error.message });
-
-                });
-
-            });    return true;
+            sendResponse({ error: error.message });
+          });
+      }
+    );
+    return true;
   } else if (message.type === 'OPEN_SIDE_PANEL') {
     if (sender.tab?.id) {
       chrome.sidePanel.open({ tabId: sender.tab.id });
     }
   } else if (message.type === 'SAVE_TO_ANKI') {
     const html = formatExplanationToHtml(message.explanation);
-    anki.addNote(message.word, html)
-      .then(noteId => sendResponse({ success: true, noteId }))
-      .catch(error => sendResponse({ error: error.message }));
+    anki
+      .addNote(message.word, html)
+      .then((noteId) => sendResponse({ success: true, noteId }))
+      .catch((error) => sendResponse({ error: error.message }));
     return true;
   }
 });

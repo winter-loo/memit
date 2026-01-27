@@ -2,19 +2,12 @@
   "manifest_version": 3,
   "name": "Screen Text Reader",
   "version": "1.0.0",
-  "permissions": [
-    "contextMenus",
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
+  "permissions": ["contextMenus", "storage", "activeTab", "scripting"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background.ts",
     "type": "module"
@@ -22,7 +15,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/modal.ts"]
+      "js": ["src/content/modal.svelte.ts"]
     }
   ]
 }

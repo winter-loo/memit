@@ -9,11 +9,11 @@ describe('Overlay Positioning', () => {
       right: 200,
       bottom: 120,
       width: 100,
-      height: 20
+      height: 20,
     } as DOMRect;
 
     const pos = calculatePosition(rect);
-    
+
     // Expect it to be near the end of selection (right side)
     expect(pos.left).toBeGreaterThan(100);
     expect(pos.top).toBeGreaterThan(100);

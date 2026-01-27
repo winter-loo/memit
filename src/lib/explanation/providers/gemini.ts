@@ -46,6 +46,10 @@ export class GeminiExplainer implements ContentExplainer {
         contents: prompt,
       });
 
+      if (!response.text) {
+        throw new Error('Gemini API returned an empty response.');
+      }
+
       let content = response.text.trim();
 
       // Strip markdown code blocks if present

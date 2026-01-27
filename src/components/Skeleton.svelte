@@ -1,4 +1,8 @@
-<div class="skeleton-container">
+<script lang="ts">
+  let { isRetrying = false } = $props();
+</script>
+
+<div class="skeleton-container" class:retrying={isRetrying}>
   <!-- Header Section -->
   <div class="header-skeleton">
     <div class="word-line">
@@ -43,6 +47,11 @@
     overflow: hidden;
   }
 
+  .skeleton-container.retrying .skeleton {
+    background: var(--border-color);
+    animation: none;
+  }
+
   .skeleton {
     background: linear-gradient(
       90deg,
@@ -56,8 +65,12 @@
   }
 
   @keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   .word-line {
@@ -67,8 +80,14 @@
     margin-bottom: 0.75rem;
   }
 
-  .word-box { width: 180px; height: 2.5rem; }
-  .phonetic-box { width: 120px; height: 1rem; }
+  .word-box {
+    width: 180px;
+    height: 2.5rem;
+  }
+  .phonetic-box {
+    width: 120px;
+    height: 1rem;
+  }
 
   .card-skeleton {
     background: var(--card-bg);
@@ -77,9 +96,19 @@
     padding: var(--spacing-md) var(--spacing-lg);
   }
 
-  .label-box { width: 60px; height: 0.6rem; margin-bottom: 0.5rem; }
-  .text-box-lg { width: 90%; height: 1rem; }
-  .text-box-md { width: 40%; height: 1.2rem; }
+  .label-box {
+    width: 60px;
+    height: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .text-box-lg {
+    width: 90%;
+    height: 1rem;
+  }
+  .text-box-md {
+    width: 40%;
+    height: 1.2rem;
+  }
 
   .tabs-skeleton {
     display: flex;
@@ -88,9 +117,16 @@
     padding-bottom: var(--spacing-sm);
   }
 
-  .tab-box { width: 70px; height: 0.8rem; }
+  .tab-box {
+    width: 70px;
+    height: 0.8rem;
+  }
 
-  .title-box { width: 100px; height: 0.8rem; margin-bottom: 1rem; }
+  .title-box {
+    width: 100px;
+    height: 0.8rem;
+    margin-bottom: 1rem;
+  }
 
   .skeleton-text-group {
     display: flex;
@@ -98,6 +134,12 @@
     gap: 0.75rem;
   }
 
-  .line { width: 100%; height: 0.9rem; }
-  .line-short { width: 60%; height: 0.9rem; }
+  .line {
+    width: 100%;
+    height: 0.9rem;
+  }
+  .line-short {
+    width: 60%;
+    height: 0.9rem;
+  }
 </style>

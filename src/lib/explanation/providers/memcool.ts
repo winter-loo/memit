@@ -11,7 +11,7 @@ export class MemCoolExplainer implements ContentExplainer {
       url += `?model=${encodeURIComponent(options.modelId)}`;
     }
     let response: Response;
-    
+
     try {
       response = await fetch(url);
     } catch {
@@ -35,7 +35,7 @@ export class MemCoolExplainer implements ContentExplainer {
         if (messageMatch && messageMatch[1]) {
           throw new Error(messageMatch[1].replace(/\\n/g, '\n'));
         }
-        
+
         if (errorText.length < 500 && errorText.trim().length > 0) {
           throw new Error(errorText.trim());
         }
@@ -44,7 +44,7 @@ export class MemCoolExplainer implements ContentExplainer {
     }
 
     const data = await response.json();
-    
+
     // Some APIs return 200 OK but with an error field in the body
     if (data && data.error) {
       if (typeof data.error === 'object' && data.error.message) {

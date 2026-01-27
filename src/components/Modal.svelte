@@ -1,16 +1,24 @@
 <script lang="ts">
   import type { DictionaryResponse } from '../lib/explanation/types';
+  import { MODEL_GROUPS } from '../lib/explanation/models';
   import ExplanationResult from './ExplanationResult.svelte';
   import Skeleton from './Skeleton.svelte';
+  import { fly } from 'svelte/transition';
 
   interface Props {
     result?: DictionaryResponse;
     isLoading?: boolean;
     error?: string;
+    isProviderError?: boolean;
+    modelId?: string;
+    openRouterApiKey?: string;
+    geminiApiKey?: string;
+    responseTimeout?: number;
     onClose?: () => void;
     onSave?: () => void;
-    onRetry?: () => void;
+    onRetry?: (newModelId: string, apiKeys: { openRouter?: string; gemini?: string }) => void;
     isSaving?: boolean;
+    isRetrying?: boolean;
     saveError?: string;
     isSaved?: boolean;
   }
@@ -19,13 +27,70 @@
     result,
     isLoading = false,
     error = '',
+    isProviderError = false,
+    modelId = '',
+    openRouterApiKey = '',
+    geminiApiKey = '',
+    responseTimeout = 5,
     onClose,
     onSave,
     onRetry,
     isSaving = false,
+    isRetrying = false,
     saveError = '',
     isSaved = false,
   }: Props = $props();
+
+  /**
+   * We use $state + $effect instead of $derived.by(() => modelId) for localModelId because:
+   * 1. $derived is read-only and would break the 'bind:value' needed for the model selection dropdown.
+   * 2. We need a "buffered state" that allows users to pick a model locally without immediately
+   *    triggering a global storage update.
+   * 3. The $effect ensures the local UI still stays in sync if the global settings change externally.
+   * 4. Changes are only committed to global storage when the user clicks 'Stop and Retry'.
+   */
+  // eslint-disable-next-line svelte/prefer-writable-derived
+  let localModelId = $state('');
+  // eslint-disable-next-line svelte/prefer-writable-derived
+  let localOpenRouterApiKey = $state('');
+  // eslint-disable-next-line svelte/prefer-writable-derived
+  let localGeminiApiKey = $state('');
+
+  // Sync state if props change externally
+  $effect(() => {
+    localModelId = modelId;
+  });
+  $effect(() => {
+    localOpenRouterApiKey = openRouterApiKey;
+  });
+  $effect(() => {
+    localGeminiApiKey = geminiApiKey;
+  });
+
+  let showFallback = $state(false);
+
+  $effect(() => {
+    if (isLoading && !isRetrying) {
+      // Start a timer to show the fallback UI
+      const timer = setTimeout(() => {
+        showFallback = true;
+      }, responseTimeout * 1000);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  });
+
+  // Manage showFallback visibility
+  $effect(() => {
+    if (!isLoading && !isRetrying) {
+      showFallback = false;
+    }
+    if (isRetrying) {
+      showFallback = true;
+    }
+  });
 </script>
 
 <div class="modal-container" role="dialog" aria-modal="true">
@@ -40,7 +105,7 @@
       <button
         class="action-btn"
         onclick={onSave}
-        disabled={isSaving || isSaved}
+        disabled={isSaving || isSaved || !result}
         title="Save to Anki"
       >
         <span class="material-symbols-outlined">{isSaved ? 'check' : 'save'}</span>
@@ -56,20 +121,129 @@
 
   <div class="modal-body custom-scrollbar">
     {#if isLoading}
-      <Skeleton />
+      <div class="loading-container">
+        <Skeleton {isRetrying} />
+        {#if showFallback}
+          <div class="loading-fallback" transition:fly={{ y: 50, duration: 400 }}>
+            {#if isRetrying}
+              <div class="retry-feedback">
+                <span class="material-symbols-outlined spinning">sync</span>
+                Switching model...
+              </div>
+            {:else}
+              <div class="model-selector compact">
+                <label for="loading-model-select">Wait too long? Try another model:</label>
+                <select id="loading-model-select" bind:value={localModelId}>
+                  {#each MODEL_GROUPS as group (group.label)}
+                    <optgroup label={group.label}>
+                      {#each group.models as model (model.id)}
+                        <option value={model.id}>{model.name}</option>
+                      {/each}
+                    </optgroup>
+                  {/each}
+                </select>
+              </div>
+
+              {#if localModelId.startsWith('openrouter:')}
+                <div class="api-key-input compact">
+                  <input
+                    type="password"
+                    id="loading-openrouter-key"
+                    bind:value={localOpenRouterApiKey}
+                    placeholder="OpenRouter API Key"
+                  />
+                </div>
+              {/if}
+
+              {#if localModelId.startsWith('gemini:')}
+                <div class="api-key-input compact">
+                  <input
+                    type="password"
+                    id="loading-gemini-key"
+                    bind:value={localGeminiApiKey}
+                    placeholder="Gemini API Key"
+                  />
+                </div>
+              {/if}
+
+              {#if onRetry}
+                <button
+                  class="retry-btn compact"
+                  onclick={() =>
+                    onRetry?.(localModelId, {
+                      openRouter: localOpenRouterApiKey,
+                      gemini: localGeminiApiKey,
+                    })}
+                >
+                  <span class="material-symbols-outlined">refresh</span>
+                  Stop and Retry
+                </button>
+              {/if}
+            {/if}
+          </div>
+        {/if}
+      </div>
     {:else if error}
       <div class="error-container">
         <div class="error-icon">
           <span class="material-symbols-outlined">sentiment_dissatisfied</span>
         </div>
         <h3 class="error-title">Something went wrong</h3>
-        <p class="error-message">{error}</p>
-        {#if onRetry}
-          <button class="retry-btn" onclick={onRetry}>
-            <span class="material-symbols-outlined">refresh</span>
-            Try Again
-          </button>
+
+        {#if isProviderError}
+          <div class="model-selector">
+            <label for="error-model-select">Try another model:</label>
+            <select id="error-model-select" bind:value={localModelId}>
+              {#each MODEL_GROUPS as group (group.label)}
+                <optgroup label={group.label}>
+                  {#each group.models as model (model.id)}
+                    <option value={model.id}>{model.name}</option>
+                  {/each}
+                </optgroup>
+              {/each}
+            </select>
+          </div>
+
+          {#if localModelId.startsWith('openrouter:')}
+            <div class="api-key-input">
+              <label for="modal-openrouter-key">OpenRouter API Key:</label>
+              <input
+                type="password"
+                id="modal-openrouter-key"
+                bind:value={localOpenRouterApiKey}
+                placeholder="sk-or-v1-..."
+              />
+            </div>
+          {/if}
+
+          {#if localModelId.startsWith('gemini:')}
+            <div class="api-key-input">
+              <label for="modal-gemini-key">Gemini API Key:</label>
+              <input
+                type="password"
+                id="modal-gemini-key"
+                bind:value={localGeminiApiKey}
+                placeholder="AIzaSy..."
+              />
+            </div>
+          {/if}
+
+          {#if onRetry}
+            <button
+              class="retry-btn"
+              onclick={() =>
+                onRetry?.(localModelId, {
+                  openRouter: localOpenRouterApiKey,
+                  gemini: localGeminiApiKey,
+                })}
+            >
+              <span class="material-symbols-outlined">refresh</span>
+              Try Again
+            </button>
+          {/if}
         {/if}
+
+        <p class="error-message">{error}</p>
       </div>
     {:else if result}
       <ExplanationResult {result} {saveError} />
@@ -178,6 +352,45 @@
     padding: 0;
   }
 
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .loading-fallback {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .retry-feedback {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 600;
+    padding: var(--spacing-sm);
+  }
+
+  .spinning {
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   .error-container {
     display: flex;
     flex-direction: column;
@@ -221,8 +434,49 @@
     max-width: 320px;
   }
 
-  .retry-btn {
+  .model-selector,
+  .api-key-input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    width: 100%;
+    max-width: 280px;
     margin-top: var(--spacing-md);
+    text-align: left;
+  }
+
+  .model-selector.compact,
+  .api-key-input.compact {
+    margin-top: 0;
+    gap: 4px;
+  }
+
+  .model-selector label,
+  .api-key-input label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .model-selector select,
+  .api-key-input input {
+    background: var(--card-bg);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  .model-selector.compact select,
+  .api-key-input.compact input {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .retry-btn {
+    margin-top: var(--spacing-sm);
     background: var(--primary-color);
     color: white;
     border: none;
@@ -233,6 +487,15 @@
     align-items: center;
     gap: var(--spacing-sm);
     transition: transform var(--transition-fast);
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+  }
+
+  .retry-btn.compact {
+    margin-top: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
   }
 
   .retry-btn:hover {
