@@ -2,8 +2,8 @@
   import type { DictionaryResponse } from '../lib/explanation/types';
   import { MODEL_GROUPS } from '../lib/explanation/models';
   import ExplanationResult from './ExplanationResult.svelte';
-  import LucideIcon from './LucideIcon.svelte';
   import Skeleton from './Skeleton.svelte';
+  import { Check, Frown, Gamepad2, Languages, RefreshCw, Save, X } from '@lucide/svelte';
   import { fly } from 'svelte/transition';
 
   interface Props {
@@ -109,7 +109,7 @@
   <header class="modal-header">
     <div class="brand">
       <div class="brand-icon">
-        <LucideIcon name="languages" size={20} />
+        <Languages size={20} />
       </div>
       <h2 class="brand-name">memit</h2>
     </div>
@@ -120,13 +120,17 @@
         disabled={isSaving || isSaved || !result}
         title="Save to Anki"
       >
-        <LucideIcon name={isSaved ? 'check' : 'save'} size={20} />
+        {#if isSaved}
+          <Check size={20} />
+        {:else}
+          <Save size={20} />
+        {/if}
       </button>
       <button class="action-btn" title="Practice">
-        <LucideIcon name="gamepad-2" size={20} />
+        <Gamepad2 size={20} />
       </button>
       <button class="action-btn close" onclick={onClose} title="Close">
-        <LucideIcon name="x" size={20} />
+        <X size={20} />
       </button>
     </div>
   </header>
@@ -139,7 +143,7 @@
           <div class="loading-fallback" transition:fly={{ y: 50, duration: 400 }}>
             {#if isRetrying}
               <div class="retry-feedback">
-                <LucideIcon name="refresh-cw" size={18} className="spinning" />
+                <RefreshCw size={18} class="spinning" />
                 Switching model...
               </div>
             {:else}
@@ -187,7 +191,7 @@
                       gemini: localGeminiApiKey,
                     })}
                 >
-                  <LucideIcon name="refresh-cw" size={16} />
+                  <RefreshCw size={16} />
                   Stop and Retry
                 </button>
               {/if}
@@ -198,7 +202,7 @@
     {:else if error}
       <div class="error-container">
         <div class="error-icon">
-          <LucideIcon name="frown" size={32} />
+          <Frown size={32} />
         </div>
         <h3 class="error-title">Something went wrong</h3>
 
@@ -249,7 +253,7 @@
                   gemini: localGeminiApiKey,
                 })}
             >
-              <LucideIcon name="refresh-cw" size={18} />
+              <RefreshCw size={18} />
               Try Again
             </button>
           {/if}
@@ -275,7 +279,7 @@
                     localText
                   )}
               >
-                <LucideIcon name="refresh-cw" size={18} />
+                <RefreshCw size={18} />
                 Try Again with New Text
               </button>
             {/if}
@@ -331,10 +335,6 @@
     justify-content: center;
   }
 
-  .brand-icon :global(.lucide-icon) {
-    width: 20px;
-    height: 20px;
-  }
 
   .brand-name {
     font-size: 1rem;
@@ -382,10 +382,6 @@
     color: var(--error-color);
   }
 
-  .action-btn :global(.lucide-icon) {
-    width: 20px;
-    height: 20px;
-  }
 
   .modal-body {
     flex: 1;
@@ -455,10 +451,6 @@
     margin-bottom: var(--spacing-sm);
   }
 
-  .error-icon :global(.lucide-icon) {
-    width: 32px;
-    height: 32px;
-  }
 
   .error-title {
     font-size: 1.25rem;
@@ -557,10 +549,6 @@
     filter: brightness(1.1);
   }
 
-  .retry-btn :global(.lucide-icon) {
-    width: 18px;
-    height: 18px;
-  }
 
   /* Custom scrollbar for the modal body */
   .custom-scrollbar::-webkit-scrollbar {

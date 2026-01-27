@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MODEL_GROUPS } from './lib/explanation/models';
-  import LucideIcon from './components/LucideIcon.svelte';
+  import { Check, Languages } from '@lucide/svelte';
 
   interface Settings {
     ankiAutoSave: boolean;
@@ -87,7 +87,7 @@
   <header>
     <div class="brand">
       <div class="brand-icon">
-        <LucideIcon name="languages" size={22} />
+        <Languages size={22} />
       </div>
       <h1 class="brand-name">memit settings</h1>
     </div>
@@ -217,7 +217,7 @@
       <div class="footer">
         <button class="save-btn" onclick={saveSettings}>
           {#if saved}
-            <LucideIcon name="check" size={18} />
+            <Check size={18} />
             Saved!
           {:else}
             Save Changes
