@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MODEL_GROUPS } from './lib/explanation/models';
+  import Icon from './components/Icon.svelte';
+  import * as Icons from './lib/icons';
 
   interface Settings {
     ankiAutoSave: boolean;
@@ -86,7 +88,7 @@
   <header>
     <div class="brand">
       <div class="brand-icon">
-        <span class="material-symbols-outlined">translate</span>
+        <Icon iconNodes={Icons.languages} size={24} />
       </div>
       <h1 class="brand-name">memit settings</h1>
     </div>
@@ -216,7 +218,7 @@
       <div class="footer">
         <button class="save-btn" onclick={saveSettings}>
           {#if saved}
-            <span class="material-symbols-outlined">check</span>
+            <Icon iconNodes={Icons.check} size={20} />
             Saved!
           {:else}
             Save Changes

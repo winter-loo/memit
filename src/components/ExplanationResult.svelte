@@ -1,12 +1,15 @@
 <script lang="ts">
   import type { DictionaryResponse } from '../lib/explanation/types';
+  import Icon from './Icon.svelte';
+  import * as Icons from '../lib/icons';
 
   interface Props {
     result: DictionaryResponse;
     saveError?: string;
+    onRetry?: () => void;
   }
 
-  let { result, saveError = '' }: Props = $props();
+  let { result, saveError = '', onRetry }: Props = $props();
 
   type Tab = 'explanation' | 'usage' | 'origin';
   let activeTab = $state<Tab>('explanation');
@@ -27,13 +30,22 @@
   <header class="word-header">
     <div class="word-line">
       <h1 class="word">{result.word}</h1>
+      {#if onRetry}
+        <button
+          class="icon-btn-small retry-icon"
+          onclick={onRetry}
+          title="Not satisfied? Try again"
+        >
+          <Icon iconNodes={Icons.rotateCcw} size={16} />
+        </button>
+      {/if}
     </div>
     <div class="phonetic-line">
       {#if displayIPA}
         <p class="ipa">{displayIPA}</p>
       {/if}
       <button class="icon-btn-small" title="Listen">
-        <span class="material-symbols-outlined">volume_up</span>
+        <Icon iconNodes={Icons.volume2} size={18} />
       </button>
     </div>
   </header>
@@ -72,7 +84,7 @@
     {#if activeTab === 'explanation'}
       <section class="section">
         <h3 class="section-title">
-          <span class="material-symbols-outlined icon-orange">info</span>
+          <Icon iconNodes={Icons.info} size={18} class="icon-orange" />
           Detailed Explanation
         </h3>
         <p class="detailed-text">{result.detailed_explanation}</p>
@@ -82,7 +94,7 @@
     {#if activeTab === 'usage'}
       <section class="section">
         <div class="section-header">
-          <span class="material-symbols-outlined icon-orange">format_quote</span>
+          <Icon iconNodes={Icons.quote} size={18} class="icon-orange" />
           <h3 class="section-title">Example Sentences</h3>
         </div>
         <div class="example-stack">
@@ -103,7 +115,7 @@
       {#if result.context_usage}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">psychology</span>
+            <Icon iconNodes={Icons.brain} size={18} class="icon-orange" />
             <h3 class="section-title">Context Usage</h3>
           </div>
           <div class="context-card">
@@ -117,7 +129,7 @@
       {#if result.etymology}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">history</span>
+            <Icon iconNodes={Icons.history} size={18} class="icon-orange" />
             <h3 class="section-title">Etymology</h3>
           </div>
           <div class="info-card">
@@ -129,7 +141,7 @@
       {#if result.synonyms && result.synonyms.length > 0}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">sync_alt</span>
+            <Icon iconNodes={Icons.repeat} size={18} class="icon-orange" />
             <h3 class="section-title">Synonyms</h3>
           </div>
           <div class="info-card compact">
@@ -141,7 +153,7 @@
       {#if result.antonyms && result.antonyms.length > 0}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">remove_circle_outline</span>
+            <Icon iconNodes={Icons.minusCircle} size={18} class="icon-orange" />
             <h3 class="section-title">Antonyms</h3>
           </div>
           <div class="info-card compact">
@@ -154,7 +166,7 @@
 
   {#if saveError}
     <div class="error-toast">
-      <span class="material-symbols-outlined">error</span>
+      <Icon iconNodes={Icons.alertCircle} size={16} />
       {saveError}
     </div>
   {/if}
@@ -187,6 +199,21 @@
     margin: 0;
   }
 
+  .retry-icon {
+    opacity: 0;
+    transition:
+      opacity var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .word-line:hover .retry-icon {
+    opacity: 0.6;
+  }
+
+  .retry-icon:hover {
+    opacity: 1 !important;
+  }
+
   .phonetic-line {
     display: flex;
     align-items: center;
@@ -215,10 +242,6 @@
 
   .icon-btn-small:hover {
     color: var(--primary-color);
-  }
-
-  .icon-btn-small span {
-    font-size: 18px;
   }
 
   /* Simple Def Card */
@@ -342,11 +365,6 @@
     gap: 0.5rem;
   }
 
-  .icon-orange {
-    color: var(--primary-color);
-    font-size: 18px !important;
-  }
-
   .detailed-text {
     font-size: 14px;
     line-height: 1.6;
@@ -381,15 +399,6 @@
     line-height: 1.5;
     font-weight: 500;
     margin: 0;
-  }
-
-  :global(.highlight) {
-    color: var(--primary-color);
-    font-weight: 700;
-    text-decoration: underline;
-    text-decoration-color: rgba(242, 139, 13, 0.4);
-    text-underline-offset: 4px;
-    text-decoration-thickness: 2px;
   }
 
   .context-card {

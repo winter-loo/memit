@@ -3,6 +3,8 @@
   import { MODEL_GROUPS } from '../lib/explanation/models';
   import ExplanationResult from './ExplanationResult.svelte';
   import Skeleton from './Skeleton.svelte';
+  import Icon from './Icon.svelte';
+  import * as Icons from '../lib/icons';
   import { fly } from 'svelte/transition';
 
   interface Props {
@@ -108,7 +110,7 @@
   <header class="modal-header">
     <div class="brand">
       <div class="brand-icon">
-        <span class="material-symbols-outlined">translate</span>
+        <Icon iconNodes={Icons.languages} size={20} />
       </div>
       <h2 class="brand-name">memit</h2>
     </div>
@@ -119,13 +121,17 @@
         disabled={isSaving || isSaved || !result}
         title="Save to Anki"
       >
-        <span class="material-symbols-outlined">{isSaved ? 'check' : 'save'}</span>
+        {#if isSaved}
+          <Icon iconNodes={Icons.check} size={20} />
+        {:else}
+          <Icon iconNodes={Icons.save} size={20} />
+        {/if}
       </button>
       <button class="action-btn" title="Practice">
-        <span class="material-symbols-outlined">sports_esports</span>
+        <Icon iconNodes={Icons.gamepad2} size={20} />
       </button>
       <button class="action-btn close" onclick={onClose} title="Close">
-        <span class="material-symbols-outlined">close</span>
+        <Icon iconNodes={Icons.x} size={20} />
       </button>
     </div>
   </header>
@@ -138,7 +144,7 @@
           <div class="loading-fallback" transition:fly={{ y: 50, duration: 400 }}>
             {#if isRetrying}
               <div class="retry-feedback">
-                <span class="material-symbols-outlined spinning">sync</span>
+                <Icon iconNodes={Icons.loader2} size={20} class="spinning" />
                 Switching model...
               </div>
             {:else}
@@ -186,7 +192,7 @@
                       gemini: localGeminiApiKey,
                     })}
                 >
-                  <span class="material-symbols-outlined">refresh</span>
+                  <Icon iconNodes={Icons.refreshCcw} size={18} />
                   Stop and Retry
                 </button>
               {/if}
@@ -197,7 +203,7 @@
     {:else if error}
       <div class="error-container">
         <div class="error-icon">
-          <span class="material-symbols-outlined">sentiment_dissatisfied</span>
+          <Icon iconNodes={Icons.frown} size={32} />
         </div>
         <h3 class="error-title">Something went wrong</h3>
 
@@ -248,7 +254,7 @@
                   gemini: localGeminiApiKey,
                 })}
             >
-              <span class="material-symbols-outlined">refresh</span>
+              <Icon iconNodes={Icons.refreshCcw} size={18} />
               Try Again
             </button>
           {/if}
@@ -274,7 +280,7 @@
                     localText
                   )}
               >
-                <span class="material-symbols-outlined">refresh</span>
+                <Icon iconNodes={Icons.refreshCcw} size={18} />
                 Try Again with New Text
               </button>
             {/if}
@@ -284,7 +290,15 @@
         <p class="error-message">{error}</p>
       </div>
     {:else if result}
-      <ExplanationResult {result} {saveError} />
+      <ExplanationResult
+        {result}
+        {saveError}
+        onRetry={() =>
+          onRetry?.(localModelId, {
+            openRouter: localOpenRouterApiKey,
+            gemini: localGeminiApiKey,
+          })}
+      />
     {/if}
   </div>
 </div>
@@ -328,10 +342,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .brand-icon span {
-    font-size: 20px;
   }
 
   .brand-name {
@@ -380,10 +390,6 @@
     color: var(--error-color);
   }
 
-  .action-btn span {
-    font-size: 20px;
-  }
-
   .modal-body {
     flex: 1;
     overflow-y: auto;
@@ -416,7 +422,7 @@
     padding: var(--spacing-sm);
   }
 
-  .spinning {
+  :global(.spinning) {
     animation: spin 2s linear infinite;
   }
 
@@ -450,10 +456,6 @@
     align-items: center;
     justify-content: center;
     margin-bottom: var(--spacing-sm);
-  }
-
-  .error-icon span {
-    font-size: 32px;
   }
 
   .error-title {
@@ -551,10 +553,6 @@
   .retry-btn:hover {
     transform: translateY(-1px);
     filter: brightness(1.1);
-  }
-
-  .retry-btn span {
-    font-size: 18px;
   }
 
   /* Custom scrollbar for the modal body */
