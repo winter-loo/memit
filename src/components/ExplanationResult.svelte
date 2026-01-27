@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DictionaryResponse } from '../lib/explanation/types';
+  import LucideIcon from './LucideIcon.svelte';
 
   interface Props {
     result: DictionaryResponse;
@@ -33,7 +34,7 @@
         <p class="ipa">{displayIPA}</p>
       {/if}
       <button class="icon-btn-small" title="Listen">
-        <span class="material-symbols-outlined">volume_up</span>
+        <LucideIcon name="volume-2" size={18} />
       </button>
     </div>
   </header>
@@ -72,7 +73,7 @@
     {#if activeTab === 'explanation'}
       <section class="section">
         <h3 class="section-title">
-          <span class="material-symbols-outlined icon-orange">info</span>
+          <LucideIcon name="info" size={18} className="icon-orange" />
           Detailed Explanation
         </h3>
         <p class="detailed-text">{result.detailed_explanation}</p>
@@ -82,7 +83,7 @@
     {#if activeTab === 'usage'}
       <section class="section">
         <div class="section-header">
-          <span class="material-symbols-outlined icon-orange">format_quote</span>
+          <LucideIcon name="quote" size={18} className="icon-orange" />
           <h3 class="section-title">Example Sentences</h3>
         </div>
         <div class="example-stack">
@@ -103,7 +104,7 @@
       {#if result.context_usage}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">psychology</span>
+            <LucideIcon name="brain" size={18} className="icon-orange" />
             <h3 class="section-title">Context Usage</h3>
           </div>
           <div class="context-card">
@@ -117,7 +118,7 @@
       {#if result.etymology}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">history</span>
+            <LucideIcon name="history" size={18} className="icon-orange" />
             <h3 class="section-title">Etymology</h3>
           </div>
           <div class="info-card">
@@ -129,7 +130,7 @@
       {#if result.synonyms && result.synonyms.length > 0}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">sync_alt</span>
+            <LucideIcon name="arrow-left-right" size={18} className="icon-orange" />
             <h3 class="section-title">Synonyms</h3>
           </div>
           <div class="info-card compact">
@@ -141,7 +142,7 @@
       {#if result.antonyms && result.antonyms.length > 0}
         <section class="section">
           <div class="section-header">
-            <span class="material-symbols-outlined icon-orange">remove_circle_outline</span>
+            <LucideIcon name="circle-minus" size={18} className="icon-orange" />
             <h3 class="section-title">Antonyms</h3>
           </div>
           <div class="info-card compact">
@@ -154,7 +155,7 @@
 
   {#if saveError}
     <div class="error-toast">
-      <span class="material-symbols-outlined">error</span>
+      <LucideIcon name="triangle-alert" size={18} />
       {saveError}
     </div>
   {/if}
@@ -217,8 +218,9 @@
     color: var(--primary-color);
   }
 
-  .icon-btn-small span {
-    font-size: 18px;
+  .icon-btn-small :global(.lucide-icon) {
+    width: 18px;
+    height: 18px;
   }
 
   /* Simple Def Card */
@@ -342,9 +344,8 @@
     gap: 0.5rem;
   }
 
-  .icon-orange {
+  :global(.icon-orange) {
     color: var(--primary-color);
-    font-size: 18px !important;
   }
 
   .detailed-text {

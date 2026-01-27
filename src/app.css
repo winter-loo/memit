@@ -59,7 +59,6 @@
 }
 
 .memit-root * {
-  all: revert; /* Restore standard behavior for children (divs, buttons, etc) */
   box-sizing: border-box;
 }
 

@@ -113,7 +113,6 @@ function ensureOverlayHost() {
         font-family: 'Lexend', sans-serif;
       }
       @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
-      @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
       ${appCss}
     `;
     shadowRoot.appendChild(globalStyleTag);

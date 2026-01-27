@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { crx } from '@crxjs/vite-plugin';
@@ -22,6 +22,7 @@ export default defineConfig({
       },
     },
   },
+  // @ts-expect-error -- vitest augments Vite config at runtime
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup-vitest.ts'],
