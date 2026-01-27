@@ -4,6 +4,7 @@
   import ExplanationResult from './ExplanationResult.svelte';
   import Skeleton from './Skeleton.svelte';
   import Icon from './Icon.svelte';
+  import ToolMenu from './ToolMenu.svelte';
   import * as Icons from '../lib/icons';
   import { fly } from 'svelte/transition';
 
@@ -49,14 +50,7 @@
     isSaved = false,
   }: Props = $props();
 
-  /**
-   * We use $state + $effect instead of $derived.by(() => modelId) for localModelId because:
-   * 1. $derived is read-only and would break the 'bind:value' needed for the model selection dropdown.
-   * 2. We need a "buffered state" that allows users to pick a model locally without immediately
-   *    triggering a global storage update.
-   * 3. The $effect ensures the local UI still stays in sync if the global settings change externally.
-   * 4. Changes are only committed to global storage when the user clicks 'Stop and Retry'.
-   */
+  // Buffered state for settings
   // eslint-disable-next-line svelte/prefer-writable-derived
   let localModelId = $state('');
   // eslint-disable-next-line svelte/prefer-writable-derived
@@ -84,29 +78,121 @@
 
   $effect(() => {
     if (isLoading && !isRetrying) {
-      // Start a timer to show the fallback UI
       const timer = setTimeout(() => {
         showFallback = true;
       }, responseTimeout * 1000);
-
-      return () => {
-        clearTimeout(timer);
-      };
+      return () => clearTimeout(timer);
     }
   });
 
-  // Manage showFallback visibility
   $effect(() => {
-    if (!isLoading && !isRetrying) {
-      showFallback = false;
-    }
-    if (isRetrying) {
-      showFallback = true;
-    }
+    if (!isLoading && !isRetrying) showFallback = false;
+    if (isRetrying) showFallback = true;
   });
+
+  /**
+   * SELECTION TOOLS LOGIC
+   */
+  let modalElement = $state<HTMLElement | null>(null);
+  let selectionState = $state<{
+    text: string;
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({
+    text: '',
+    x: 0,
+    y: 0,
+    visible: false,
+  });
+
+  function handleMouseUp() {
+    // Small delay to allow selection to finalize
+    setTimeout(() => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+
+            if (selectedText && selectedText.length > 0 && modalElement && selection) {
+              /**
+               * SHADOW DOM SELECTION DETECTION:
+               * In Chrome, when selecting text inside a Shadow Root, window.getSelection().anchorNode
+               * is often retargeted to the Shadow Host.
+               */
+              const root = modalElement.getRootNode();
+              const isShadow = root instanceof ShadowRoot;
+              const host = isShadow ? root.host : null;
+      
+              const isInside =
+                (selection.anchorNode && modalElement.contains(selection.anchorNode)) ||
+                (host && selection.anchorNode === host);        
+        if (!isInside) {
+          selectionState.visible = false;
+          return;
+        }
+
+        const range = selection?.getRangeAt(0);
+        const rect = range?.getBoundingClientRect();
+
+        if (rect) {
+          selectionState = {
+            text: selectedText,
+            x: rect.left + rect.width / 2 - 60, // Center the menu
+            y: rect.top - 45, // Above the selection
+            visible: true,
+          };
+        }
+      } else {
+        selectionState.visible = false;
+      }
+    }, 10);
+  }
+
+  function onExplainSelection() {
+    const newText = selectionState.text;
+    selectionState.visible = false;
+    onRetry?.(
+      localModelId,
+      {
+        openRouter: localOpenRouterApiKey,
+        gemini: localGeminiApiKey,
+      },
+      newText
+    );
+  }
+
+  function onHighlightSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const span = document.createElement('span');
+    span.className = 'highlight';
+
+    try {
+      range.surroundContents(span);
+    } catch (e) {
+      // surroundContents fails if selection crosses element boundaries
+      console.warn('Could not highlight complex selection:', e);
+    }
+
+    selection.removeAllRanges();
+    selectionState.visible = false;
+  }
+
+  // Clear selection menu on scroll or click elsewhere
+  function handleModalScroll() {
+    if (selectionState.visible) selectionState.visible = false;
+  }
 </script>
 
-<div class="modal-container" role="dialog" aria-modal="true">
+<div
+  class="modal-container"
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+  bind:this={modalElement}
+  onmouseup={handleMouseUp}
+>
   <header class="modal-header">
     <div class="brand">
       <div class="brand-icon">
@@ -136,7 +222,7 @@
     </div>
   </header>
 
-  <div class="modal-body custom-scrollbar">
+  <div class="modal-body custom-scrollbar" onscroll={handleModalScroll}>
     {#if isLoading}
       <div class="loading-container">
         <Skeleton {isRetrying} />
@@ -301,6 +387,15 @@
       />
     {/if}
   </div>
+
+  {#if selectionState.visible}
+    <ToolMenu
+      x={selectionState.x}
+      y={selectionState.y}
+      onExplain={onExplainSelection}
+      onHighlight={onHighlightSelection}
+    />
+  {/if}
 </div>
 
 <style>
@@ -316,6 +411,7 @@
     box-shadow: var(--shadow-lg);
     overflow: hidden;
     color: var(--text-main);
+    position: relative;
   }
 
   .modal-header {
