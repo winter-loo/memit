@@ -7,7 +7,14 @@ import manifest from './manifest.json';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [svelte(), svelteTesting(), crx({ manifest })],
+  plugins: [
+    svelte({
+      // https://github.com/sveltejs/svelte/issues/5869
+      emitCss: false,
+    }),
+    svelteTesting(),
+    crx({ manifest }),
+  ],
   build: {
     rollupOptions: {
       input: {

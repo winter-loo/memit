@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/svelte';
+import { within } from '@testing-library/svelte';
 
 // Define chrome on global before importing the content script
 const chromeMock = {
@@ -49,6 +49,13 @@ describe('Modal Content Script', () => {
     openModal(longText);
     const host = document.getElementById('mem-it-modal-host');
     expect(host).toBeInTheDocument();
-    expect(screen.getByText(/Selection too long/i)).toBeInTheDocument();
+
+    // Since we use Shadow DOM, we must look inside the shadow root
+    const shadow = host?.shadowRoot;
+    expect(shadow).toBeTruthy();
+    if (shadow) {
+      const { getByText } = within(shadow as unknown as HTMLElement);
+      expect(getByText(/Selection too long/i)).toBeInTheDocument();
+    }
   });
 });

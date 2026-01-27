@@ -1,4 +1,7 @@
 .memit-root {
+  all: initial; /* SYSTEMATIC RESET: Ignore all host website styles */
+  display: block; /* Restore display from initial */
+
   /* Orange Memory Theme Tokens (Dark - Default) */
   --primary-color: #f28b0d;
   --accent-orange: #f28b0d;
@@ -55,6 +58,11 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.memit-root * {
+  all: revert; /* Restore standard behavior for children (divs, buttons, etc) */
+  box-sizing: border-box;
+}
+
 .memit-root.memit-light {
   --primary-color: #ff8c00;
   --accent-orange: #ff8c00;
@@ -75,10 +83,6 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.1);
-}
-
-.memit-root * {
-  box-sizing: border-box;
 }
 
 .memit-root h1,

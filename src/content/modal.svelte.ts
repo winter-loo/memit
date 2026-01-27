@@ -7,6 +7,7 @@ import type { DictionaryResponse } from '../lib/explanation/types';
 console.log('Screen Text Reader: Modal content script loaded.');
 
 let overlayHost: HTMLDivElement | null = null;
+let shadowRoot: ShadowRoot | null = null;
 let contentContainer: HTMLDivElement | null = null;
 let svelteApp: Record<string, unknown> | null = null;
 let currentRequestId = 0;
@@ -62,27 +63,24 @@ const modalProps = $state<ModalProps>({
     if (wordCount > maxWords) {
       modalProps.error = `Selection too long (${wordCount} words). Please select less than ${maxWords} words.`;
       modalProps.isProviderError = false;
-      modalProps.text = textToUse; // Update the text in props so it shows in textarea
+      modalProps.text = textToUse;
       return;
     }
 
     modalProps.isRetrying = true;
     modalProps.error = '';
 
-    // Update storage ONLY when retry is clicked
     const updates: Record<string, string> = { modelId: newModelId };
     if (apiKeys.openRouter !== undefined) updates.openRouterApiKey = apiKeys.openRouter;
     if (apiKeys.gemini !== undefined) updates.geminiApiKey = apiKeys.gemini;
 
     chrome.storage.sync.set(updates, () => {
-      // Add a delay for visual feedback of "Stopping..."
       setTimeout(() => {
         modalProps.isRetrying = false;
         modalProps.isLoading = true;
         modalProps.modelId = newModelId;
         modalProps.text = textToUse;
 
-        // Manual sync for immediate response
         if (apiKeys.openRouter !== undefined) modalProps.openRouterApiKey = apiKeys.openRouter;
         if (apiKeys.gemini !== undefined) modalProps.geminiApiKey = apiKeys.gemini;
 
@@ -103,24 +101,28 @@ function ensureOverlayHost() {
     overlayHost.style.pointerEvents = 'auto';
     overlayHost.style.display = 'none';
 
-    if (!document.getElementById('memit-global-styles')) {
-      const styleTag = document.createElement('style');
-      styleTag.id = 'memit-global-styles';
-      styleTag.textContent = appCss;
-      document.head.appendChild(styleTag);
+    // 1. Create Shadow Root
+    shadowRoot = overlayHost.attachShadow({ mode: 'open' });
 
-      const fontStyle = document.createElement('style');
-      fontStyle.textContent = `
-        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-      `;
-      document.head.appendChild(fontStyle);
-    }
+    // 2. Inject global app styles + Reset into Shadow DOM
+    const globalStyleTag = document.createElement('style');
+    globalStyleTag.textContent = `
+      :host {
+        all: initial;
+        display: block;
+        font-family: 'Lexend', sans-serif;
+      }
+      @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+      ${appCss}
+    `;
+    shadowRoot.appendChild(globalStyleTag);
 
+    // 3. Create container for Svelte app
     contentContainer = document.createElement('div');
     contentContainer.className = 'memit-root';
+    shadowRoot.appendChild(contentContainer);
 
-    overlayHost.appendChild(contentContainer);
     document.body.appendChild(overlayHost);
 
     // Initial storage sync
@@ -308,7 +310,9 @@ chrome.runtime.onMessage.addListener((message) => {
 
 document.addEventListener('mousedown', (e) => {
   if (overlayHost && overlayHost.style.display === 'block') {
-    if (!overlayHost.contains(e.target as Node)) {
+    // For Shadow DOM, check if the click target was outside our host
+    const path = e.composedPath();
+    if (!path.includes(overlayHost)) {
       hideModal();
     }
   }
