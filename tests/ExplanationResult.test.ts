@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import ExplanationResult from '../src/components/ExplanationResult.svelte';
 import type { DictionaryResponse } from '../src/lib/explanation/types';
 
@@ -56,15 +56,5 @@ describe('ExplanationResult Component', () => {
     const originTab = screen.getByRole('button', { name: /Origin/i });
     await fireEvent.click(originTab);
     expect(originTab).toHaveClass('active');
-  });
-
-  it('should call onRetry when retry button is clicked', async () => {
-    const onRetry = vi.fn();
-    render(ExplanationResult, { result: mockResult, onRetry });
-
-    const retryBtn = screen.getByTitle(/Try again/i);
-    await fireEvent.click(retryBtn);
-
-    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

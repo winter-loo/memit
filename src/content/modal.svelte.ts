@@ -10,14 +10,7 @@ let overlayHost: HTMLDivElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let contentContainer: HTMLDivElement | null = null;
 let svelteApp: Record<string, unknown> | null = null;
-
-/**
- * RESPONSE RACING LOGIC:
- * We track which text has already been successfully resolved.
- * If multiple requests are on-wire (e.g. user switched models while waiting),
- * the first one to return wins.
- */
-let isResolvedForText: string | null = null;
+let currentRequestId = 0;
 
 interface ModalProps {
   result?: DictionaryResponse;
@@ -91,13 +84,8 @@ const modalProps = $state<ModalProps>({
         if (apiKeys.openRouter !== undefined) modalProps.openRouterApiKey = apiKeys.openRouter;
         if (apiKeys.gemini !== undefined) modalProps.geminiApiKey = apiKeys.gemini;
 
-        // Reset resolution state for the new text (if changed) or allow new racing
-        if (textToUse !== isResolvedForText) {
-          isResolvedForText = null;
-        }
-
         if (textToUse) fetchExplanation(textToUse, newModelId);
-      }, 200);
+      }, 1500);
     });
   },
 });
@@ -185,9 +173,6 @@ export function openModal(text: string) {
   }
   contentContainer!.innerHTML = '';
 
-  // Reset resolution state for new modal opening
-  isResolvedForText = null;
-
   // Reset modal state
   modalProps.result = undefined;
   modalProps.text = text;
@@ -258,37 +243,22 @@ function positionModal() {
 }
 
 async function fetchExplanation(text: string, currentModelId: string) {
+  const requestId = ++currentRequestId;
+
   chrome.runtime.sendMessage(
     { type: 'EXPLAIN_TEXT', text, modelId: currentModelId },
     (response) => {
-      /**
-       * RACING LOGIC CHECK:
-       * 1. Ignore if modal was closed or unmounted.
-       * 2. Ignore if the text being looked up has changed (e.g. user selected new text via ToolMenu).
-       * 3. Ignore if this text has ALREADY been resolved by another model request.
-       */
+      // Ignore if a newer request has been started
+      if (requestId !== currentRequestId) return;
       if (!svelteApp || !contentContainer) return;
-      if (text !== modalProps.text) return;
-      if (isResolvedForText === text) {
-        console.log(`Ignoring late response from ${currentModelId} as text is already resolved.`);
-        return;
-      }
 
       if (response?.error) {
-        // Only show error if we aren't already resolved and this is the CURRENT model
-        // We don't want a slow old request error to overwrite a pending new request
-        if (currentModelId === modalProps.modelId) {
-          modalProps.isLoading = false;
-          modalProps.error = response.error;
-          modalProps.isProviderError = true;
-        }
+        modalProps.isLoading = false;
+        modalProps.error = response.error;
+        modalProps.isProviderError = true;
       } else if (response?.result) {
-        // WINNER!
-        isResolvedForText = text;
         modalProps.isLoading = false;
         modalProps.result = response.result;
-        modalProps.error = '';
-        modalProps.isProviderError = false;
 
         // Setup save handler
         modalProps.onSave = () => {
@@ -313,12 +283,9 @@ async function fetchExplanation(text: string, currentModelId: string) {
           );
         };
       } else {
-        // Fallback for empty responses
-        if (currentModelId === modalProps.modelId) {
-          modalProps.isLoading = false;
-          modalProps.error = 'Failed to get an explanation. Please try again later.';
-          modalProps.isProviderError = true;
-        }
+        modalProps.isLoading = false;
+        modalProps.error = 'Failed to get an explanation. Please try again later.';
+        modalProps.isProviderError = true;
       }
     }
   );
