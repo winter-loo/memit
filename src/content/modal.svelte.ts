@@ -10,7 +10,19 @@ let overlayHost: HTMLDivElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let contentContainer: HTMLDivElement | null = null;
 let svelteApp: Record<string, unknown> | null = null;
-let currentRequestId = 0;
+let activeSessionId = 0;
+let sessionPending = 0;
+let sessionSuccessCount = 0;
+let sessionLastError = '';
+
+interface ResponseEntry {
+  modelId: string;
+  status: 'success' | 'error';
+  result?: DictionaryResponse;
+  error?: string;
+  responseTimeMs: number;
+  receivedAt: number;
+}
 
 interface ModalProps {
   result?: DictionaryResponse;
@@ -26,6 +38,10 @@ interface ModalProps {
   isRetrying: boolean;
   saveError: string;
   isSaved: boolean;
+  responses: ResponseEntry[];
+  activeResponseIndex: number;
+  pendingResponses: number;
+  onSelectResponse?: (index: number) => void;
   onClose: () => void;
   onSave?: () => void;
   onRetry: (
@@ -50,12 +66,29 @@ const modalProps = $state<ModalProps>({
   isRetrying: false,
   saveError: '',
   isSaved: false,
+  responses: [],
+  activeResponseIndex: 0,
+  pendingResponses: 0,
+  onSelectResponse: (index: number) => {
+    if (index < 0 || index >= modalProps.responses.length) return;
+    const entry = modalProps.responses[index];
+    modalProps.activeResponseIndex = index;
+    modalProps.result = entry?.status === 'success' ? entry.result : undefined;
+    if (entry?.status === 'error') {
+      modalProps.error = entry.error ?? 'Request failed.';
+      modalProps.isProviderError = true;
+    } else {
+      modalProps.error = '';
+      modalProps.isProviderError = false;
+    }
+  },
   onClose: () => hideModal(),
   onRetry: (
     newModelId: string,
     apiKeys: { openRouter?: string; gemini?: string },
     newText?: string
   ) => {
+    const previousText = modalProps.text;
     const textToUse = newText !== undefined ? newText : modalProps.text;
     const wordCount = countWords(textToUse);
     const maxWords = 20;
@@ -84,11 +117,37 @@ const modalProps = $state<ModalProps>({
         if (apiKeys.openRouter !== undefined) modalProps.openRouterApiKey = apiKeys.openRouter;
         if (apiKeys.gemini !== undefined) modalProps.geminiApiKey = apiKeys.gemini;
 
+        if (newText !== undefined && newText !== previousText) {
+          startNewSession();
+        } else {
+          sessionPending = 0;
+          sessionSuccessCount = 0;
+          sessionLastError = '';
+          modalProps.responses = [];
+          modalProps.activeResponseIndex = 0;
+          modalProps.pendingResponses = 0;
+          modalProps.result = undefined;
+          modalProps.error = '';
+          modalProps.isProviderError = false;
+        }
         if (textToUse) fetchExplanation(textToUse, newModelId);
-      }, 1500);
+      }, 200);
     });
   },
 });
+
+function startNewSession() {
+  activeSessionId += 1;
+  sessionPending = 0;
+  sessionSuccessCount = 0;
+  sessionLastError = '';
+  modalProps.responses = [];
+  modalProps.activeResponseIndex = 0;
+  modalProps.pendingResponses = 0;
+  modalProps.result = undefined;
+  modalProps.error = '';
+  modalProps.isProviderError = false;
+}
 
 function ensureOverlayHost() {
   if (!overlayHost || !document.body.contains(overlayHost)) {
@@ -174,6 +233,7 @@ export function openModal(text: string) {
   contentContainer!.innerHTML = '';
 
   // Reset modal state
+  startNewSession();
   modalProps.result = undefined;
   modalProps.text = text;
   modalProps.error = '';
@@ -243,22 +303,64 @@ function positionModal() {
 }
 
 async function fetchExplanation(text: string, currentModelId: string) {
-  const requestId = ++currentRequestId;
+  const sessionId = activeSessionId;
+  sessionPending += 1;
+  modalProps.pendingResponses = sessionPending;
+  const requestStart = performance.now();
 
   chrome.runtime.sendMessage(
     { type: 'EXPLAIN_TEXT', text, modelId: currentModelId },
     (response) => {
-      // Ignore if a newer request has been started
-      if (requestId !== currentRequestId) return;
+      if (sessionId !== activeSessionId) return;
       if (!svelteApp || !contentContainer) return;
+      sessionPending = Math.max(0, sessionPending - 1);
+      modalProps.pendingResponses = sessionPending;
 
       if (response?.error) {
-        modalProps.isLoading = false;
-        modalProps.error = response.error;
-        modalProps.isProviderError = true;
+        const responseTimeMs = Math.round(performance.now() - requestStart);
+        sessionLastError = response.error;
+        const entry: ResponseEntry = {
+          modelId: currentModelId,
+          status: 'error',
+          error: response.error,
+          responseTimeMs,
+          receivedAt: Date.now(),
+        };
+        modalProps.responses = [...modalProps.responses, entry];
+
+        if (modalProps.responses.length === 1) {
+          modalProps.activeResponseIndex = 0;
+          modalProps.result = undefined;
+          modalProps.isLoading = false;
+          modalProps.error = response.error;
+          modalProps.isProviderError = true;
+        }
+
+        if (sessionSuccessCount === 0 && sessionPending === 0) {
+          modalProps.isLoading = false;
+          modalProps.error = sessionLastError;
+          modalProps.isProviderError = true;
+        }
       } else if (response?.result) {
+        const responseTimeMs = Math.round(performance.now() - requestStart);
+        const entry: ResponseEntry = {
+          modelId: currentModelId,
+          status: 'success',
+          result: response.result,
+          responseTimeMs,
+          receivedAt: Date.now(),
+        };
+        sessionSuccessCount += 1;
         modalProps.isLoading = false;
-        modalProps.result = response.result;
+        modalProps.responses = [...modalProps.responses, entry];
+
+        if (modalProps.responses.length === 1) {
+          modalProps.activeResponseIndex = 0;
+          modalProps.result = response.result;
+          modalProps.isLoading = false;
+          modalProps.error = '';
+          modalProps.isProviderError = false;
+        }
 
         // Setup save handler
         modalProps.onSave = () => {
@@ -283,9 +385,30 @@ async function fetchExplanation(text: string, currentModelId: string) {
           );
         };
       } else {
-        modalProps.isLoading = false;
-        modalProps.error = 'Failed to get an explanation. Please try again later.';
-        modalProps.isProviderError = true;
+        const responseTimeMs = Math.round(performance.now() - requestStart);
+        sessionLastError = 'Failed to get an explanation. Please try again later.';
+        const entry: ResponseEntry = {
+          modelId: currentModelId,
+          status: 'error',
+          error: sessionLastError,
+          responseTimeMs,
+          receivedAt: Date.now(),
+        };
+        modalProps.responses = [...modalProps.responses, entry];
+
+        if (modalProps.responses.length === 1) {
+          modalProps.activeResponseIndex = 0;
+          modalProps.result = undefined;
+          modalProps.isLoading = false;
+          modalProps.error = sessionLastError;
+          modalProps.isProviderError = true;
+        }
+
+        if (sessionSuccessCount === 0 && sessionPending === 0) {
+          modalProps.isLoading = false;
+          modalProps.error = sessionLastError;
+          modalProps.isProviderError = true;
+        }
       }
     }
   );

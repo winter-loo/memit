@@ -3,7 +3,22 @@
   import { MODEL_GROUPS } from '../lib/explanation/models';
   import ExplanationResult from './ExplanationResult.svelte';
   import Skeleton from './Skeleton.svelte';
-  import { Check, Frown, Gamepad2, Languages, RefreshCw, Save, X } from '@lucide/svelte';
+  import {
+    Check,
+    CircleCheck,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsDownUp,
+    ChevronsUpDown,
+    Circle,
+    Frown,
+    Gamepad2,
+    Languages,
+    RefreshCw,
+    Save,
+    X,
+    CircleX,
+  } from '@lucide/svelte';
   import { fly } from 'svelte/transition';
 
   interface Props {
@@ -27,6 +42,17 @@
     isRetrying?: boolean;
     saveError?: string;
     isSaved?: boolean;
+    responses?: {
+      modelId: string;
+      status: 'success' | 'error';
+      result?: DictionaryResponse;
+      error?: string;
+      responseTimeMs: number;
+      receivedAt: number;
+    }[];
+    activeResponseIndex?: number;
+    pendingResponses?: number;
+    onSelectResponse?: (index: number) => void;
   }
 
   let {
@@ -46,7 +72,92 @@
     isRetrying = false,
     saveError = '',
     isSaved = false,
+    responses = [],
+    activeResponseIndex = 0,
+    pendingResponses = 0,
+    onSelectResponse,
   }: Props = $props();
+
+  function formatResponseTime(timeMs: number) {
+    if (!timeMs || timeMs < 0) return '';
+    if (timeMs < 1000) return `${timeMs}ms`;
+    return `${(timeMs / 1000).toFixed(1)}s`;
+  }
+
+  function formatProvider(value: string) {
+    if (!value) return '';
+    return value
+      .split('-')
+      .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : part))
+      .join(' ');
+  }
+
+  function getModelParts(modelId: string) {
+    const [prefix, rest] = modelId.split(':');
+    if (!rest) {
+      return { provider: formatProvider(prefix ?? ''), model: '' };
+    }
+    if (rest.includes('/')) {
+      const [providerRaw, ...restParts] = rest.split('/');
+      return {
+        provider: formatProvider(providerRaw ?? prefix ?? ''),
+        model: restParts.join('/'),
+      };
+    }
+    return { provider: formatProvider(prefix ?? ''), model: rest };
+  }
+
+  function truncateModelPartsByChars(
+    provider: string,
+    model: string,
+    maxChars: number
+  ) {
+    const providerText = provider.trim();
+    const modelText = model.trim();
+    const sep = modelText ? ' / ' : '';
+    const fullLabel = `${providerText}${sep}${modelText}`;
+
+    if (fullLabel.length <= maxChars) {
+      return {
+        providerText,
+        modelText,
+        truncated: false,
+        fullLabel,
+      };
+    }
+
+    if (providerText.length + sep.length >= maxChars) {
+      const truncatedProvider = providerText.slice(0, Math.max(maxChars, 0)).trimEnd();
+      return {
+        providerText: `${truncatedProvider}...`,
+        modelText: '',
+        truncated: true,
+        fullLabel,
+      };
+    }
+
+    const remainingForModel = Math.max(
+      maxChars - providerText.length - sep.length,
+      0
+    );
+    const truncatedModel =
+      modelText.length > remainingForModel
+        ? `${modelText.slice(0, remainingForModel).trimEnd()}...`
+        : modelText;
+
+    return {
+      providerText,
+      modelText: truncatedModel,
+      truncated: truncatedModel !== modelText,
+      fullLabel,
+    };
+  }
+
+  const activeResponse = $derived(responses[activeResponseIndex]);
+  const totalResponses = $derived(responses.length + pendingResponses);
+
+  let showResponseMenu = $state(false);
+  let showResponseBar = $state(true);
 
   /**
    * We use $state + $effect instead of $derived.by(() => modelId) for localModelId because:
@@ -103,6 +214,13 @@
       showFallback = true;
     }
   });
+
+  $effect(() => {
+    if (responses.length === 0) {
+      showResponseMenu = false;
+      showResponseBar = true;
+    }
+  });
 </script>
 
 <div class="modal-container" role="dialog" aria-modal="true">
@@ -136,7 +254,7 @@
   </header>
 
   <div class="modal-body custom-scrollbar">
-    {#if isLoading}
+    {#if isLoading && responses.length === 0}
       <div class="loading-container">
         <Skeleton {isRetrying} />
         {#if showFallback}
@@ -199,7 +317,7 @@
           </div>
         {/if}
       </div>
-    {:else if error}
+    {:else if error && responses.length === 0}
       <div class="error-container">
         <div class="error-icon">
           <Frown size={32} />
@@ -288,6 +406,135 @@
 
         <p class="error-message">{error}</p>
       </div>
+    {:else if responses.length > 0}
+      {#if showResponseBar && responses.length > 1}
+        <div class="response-status-wrapper">
+          <div class="response-status-bar">
+            <div class="response-status-left">
+              <div class="response-badge">{activeResponseIndex + 1}/{totalResponses}</div>
+              {#if activeResponse}
+                {@const parts = getModelParts(activeResponse.modelId)}
+                {@const truncatedParts = truncateModelPartsByChars(parts.provider, parts.model, 22)}
+                <div class="response-model-line">
+                  <span
+                    class="response-model-provider"
+                    title={truncatedParts.truncated ? truncatedParts.fullLabel : undefined}
+                  >
+                    {truncatedParts.providerText}
+                  </span>
+                  {#if truncatedParts.modelText}
+                    <span class="response-model-sep">/</span>
+                    <span class="response-model-name">{truncatedParts.modelText}</span>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+            {#if activeResponse?.responseTimeMs}
+              <div class="response-status-time">
+                {formatResponseTime(activeResponse.responseTimeMs)}
+              </div>
+            {/if}
+            <div class="response-status-right">
+              <button
+                class="response-icon-btn"
+                onclick={() => onSelectResponse?.(activeResponseIndex - 1)}
+                disabled={activeResponseIndex === 0}
+                aria-label="Previous response"
+                title="Previous"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                class="response-icon-btn"
+                onclick={() => onSelectResponse?.(activeResponseIndex + 1)}
+                disabled={activeResponseIndex >= responses.length - 1}
+                aria-label="Next response"
+                title="Next"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                class={`response-icon-btn response-toggle ${showResponseMenu ? 'is-open' : ''}`}
+                onclick={() => (showResponseMenu = !showResponseMenu)}
+                aria-label={showResponseMenu ? 'Collapse' : 'Expand'}
+                title={showResponseMenu ? 'Collapse' : 'Expand'}
+              >
+                {#if showResponseMenu}
+                  <ChevronsDownUp size={15} />
+                {:else}
+                  <ChevronsUpDown size={15} />
+                {/if}
+              </button>
+              <button
+                class="response-icon-btn response-close"
+                onclick={() => {
+                  showResponseMenu = false;
+                  showResponseBar = false;
+                }}
+                aria-label="Close status"
+                title="Close Status"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          {#if showResponseMenu && responses.length > 1}
+            <div class="response-menu custom-scrollbar">
+              {#each responses as response, index (response.receivedAt)}
+                {@const parts = getModelParts(response.modelId)}
+                <button
+                  class={`response-menu-item ${index === activeResponseIndex ? 'is-active' : ''}`}
+                  onclick={() => onSelectResponse?.(index)}
+                >
+                  <div class="response-menu-left">
+                    <span class="response-menu-badge">{index + 1}/{totalResponses}</span>
+                    <div class="response-menu-model">
+                      <span class="response-model-provider">{parts.provider}</span>
+                      <span class="response-model-sep">/</span>
+                      <span class="response-model-name">{parts.model}</span>
+                    </div>
+                  </div>
+                  <div class="response-menu-right">
+                    <span class="response-menu-time">{formatResponseTime(response.responseTimeMs)}</span>
+                    {#if response.status === 'error'}
+                      <CircleX size={16} class="response-status-icon is-error" fill="currentColor" />
+                    {:else if index === activeResponseIndex}
+                      <CircleCheck
+                        size={16}
+                        class="response-status-icon is-active"
+                        fill="var(--primary-color)"
+                        color="#ffffff"
+                      />
+                    {:else}
+                      <Circle
+                        size={16}
+                        class="response-status-icon"
+                        fill="#e5e7eb"
+                        color="#e5e7eb"
+                      />
+                    {/if}
+                  </div>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if activeResponse?.status === 'error'}
+        <div class="response-error">
+          <div class="response-error-title">
+            <CircleX size={16} />
+            Request failed
+          </div>
+          <p class="response-error-message">{activeResponse.error}</p>
+        </div>
+      {:else if activeResponse?.result}
+        <ExplanationResult result={activeResponse.result} {saveError} />
+      {:else if result}
+        <ExplanationResult {result} {saveError} />
+      {/if}
     {:else if result}
       <ExplanationResult {result} {saveError} />
     {/if}
@@ -393,6 +640,232 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+  }
+
+  .response-status-wrapper {
+    position: relative;
+    z-index: 20;
+  }
+
+  .response-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+    backdrop-filter: blur(8px);
+    background-color: rgba(255, 255, 255, 0.9);
+    position: relative;
+  }
+
+  .response-status-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .response-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(108, 117, 125, 0.8);
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .response-model-line {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .response-model-provider {
+    font-weight: 700;
+    color: #333333;
+  }
+
+  .response-model-sep {
+    color: #6c757d;
+    padding: 0 2px;
+  }
+
+  .response-model-name {
+    font-weight: 500;
+    color: #6c757d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .response-status-time {
+    font-size: 11px;
+    font-weight: 900;
+    color: #ff8c00;
+    background: rgba(255, 140, 0, 0.05);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 140, 0, 0.1);
+    letter-spacing: -0.02em;
+  }
+
+  .response-status-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .response-icon-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .response-icon-btn:hover:not(:disabled) {
+    color: #ff8c00;
+    background: rgba(255, 140, 0, 0.05);
+  }
+
+  .response-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .response-icon-btn.response-toggle.is-open {
+    color: #ff8c00;
+    background: rgba(255, 140, 0, 0.1);
+  }
+
+  .response-icon-btn.response-close:hover:not(:disabled) {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+  }
+
+  .response-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(12px);
+    z-index: 20;
+  }
+
+  .response-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    background: transparent;
+    color: #333333;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .response-menu-item:hover {
+    background: #f9fafb;
+  }
+
+  .response-menu-item.is-active {
+    background: var(--bg-dark);
+  }
+
+  .response-menu-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .response-menu-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(108, 117, 125, 0.6);
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .response-menu-item.is-active .response-menu-badge {
+    color: #ff8c00;
+    background: #ffffff;
+    border: 1px solid rgba(255, 140, 0, 0.2);
+  }
+
+  .response-menu-model {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    gap: 2px;
+  }
+
+  .response-menu-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .response-menu-time {
+    font-size: 11px;
+    font-weight: 700;
+    color: #ff8c00;
+  }
+
+  .response-status-icon {
+    color: #d1d5db;
+  }
+
+  .response-status-icon.is-active {
+    color: #ff8c00;
+  }
+
+  .response-status-icon.is-error {
+    color: #ef4444;
+  }
+
+  .response-menu-item:hover .response-status-icon:not(.is-active):not(.is-error) {
+    color: #6c757d;
+  }
+
+  .response-error {
+    margin: var(--spacing-lg);
+    border: 1px solid #fee2e2;
+    background: #fef2f2;
+    color: #b91c1c;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+  }
+
+  .response-error-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .response-error-message {
+    font-size: 12px;
+    margin: 0;
+    line-height: 1.5;
   }
 
   .loading-fallback {
