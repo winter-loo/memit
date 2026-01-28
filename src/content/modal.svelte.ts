@@ -354,18 +354,29 @@ async function fetchExplanation(text: string, currentModelId: string) {
         modalProps.isLoading = false;
 
         const existingIndex = modalProps.responses.findIndex((r) => r.modelId === currentModelId);
+        let newIndex = -1;
         if (existingIndex !== -1) {
           modalProps.responses[existingIndex] = entry;
-          modalProps.activeResponseIndex = existingIndex;
+          newIndex = existingIndex;
         } else {
           modalProps.responses = [...modalProps.responses, entry];
-          modalProps.activeResponseIndex = modalProps.responses.length - 1;
+          newIndex = modalProps.responses.length - 1;
         }
 
-        modalProps.result = response.result;
-        modalProps.isLoading = false;
-        modalProps.error = '';
-        modalProps.isProviderError = false;
+        // Only switch to this new result if we don't already have a successful result displayed
+        if (!modalProps.result) {
+          modalProps.activeResponseIndex = newIndex;
+          modalProps.result = response.result;
+          modalProps.isLoading = false;
+          modalProps.error = '';
+          modalProps.isProviderError = false;
+        } else {
+          // If we are already showing a result, just update the list (which is reactive)
+          // The user can manually switch if they want.
+          // We might want to ensure isLoading is false if all pending are done?
+          // The sessionPending logic handles the spinner in the status bar if we add that later,
+          // but for the main UI, if we have a result, we are not "loading" in the main view.
+        }
 
         // Trace minimum response time and set best model
         const successfulResponses = modalProps.responses.filter((r) => r.status === 'success');

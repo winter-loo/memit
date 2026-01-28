@@ -247,7 +247,7 @@
             disabledModels={pendingModelIds}
             badge={badgeSnippet}
           />
-        {:else if isTooLongError }
+        {:else if isTooLongError}
           <div class="text-shortener">
             <label for="error-text-shorten">Shorten your selection:</label>
             <textarea
