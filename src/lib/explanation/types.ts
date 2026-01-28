@@ -13,6 +13,15 @@ export interface DictionaryResponse {
   error?: string;
 }
 
+export interface ResponseEntry {
+  modelId: string;
+  status: 'success' | 'error';
+  result?: DictionaryResponse;
+  error?: string;
+  responseTimeMs: number;
+  receivedAt: number;
+}
+
 export interface ContentExplainer {
   id: string;
   name: string;

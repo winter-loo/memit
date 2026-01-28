@@ -41,6 +41,7 @@ interface ModalProps {
   responses: ResponseEntry[];
   activeResponseIndex: number;
   pendingResponses: number;
+  pendingModelIds: string[];
   onSelectResponse?: (index: number) => void;
   onClose: () => void;
   onSave?: () => void;
@@ -69,6 +70,7 @@ const modalProps = $state<ModalProps>({
   responses: [],
   activeResponseIndex: 0,
   pendingResponses: 0,
+  pendingModelIds: [],
   onSelectResponse: (index: number) => {
     if (index < 0 || index >= modalProps.responses.length) return;
     const entry = modalProps.responses[index];
@@ -108,30 +110,18 @@ const modalProps = $state<ModalProps>({
     if (apiKeys.gemini !== undefined) updates.geminiApiKey = apiKeys.gemini;
 
     chrome.storage.sync.set(updates, () => {
-      setTimeout(() => {
-        modalProps.isRetrying = false;
-        modalProps.isLoading = true;
-        modalProps.modelId = newModelId;
-        modalProps.text = textToUse;
+      modalProps.isRetrying = false;
+      modalProps.isLoading = true;
+      modalProps.modelId = newModelId;
+      modalProps.text = textToUse;
 
-        if (apiKeys.openRouter !== undefined) modalProps.openRouterApiKey = apiKeys.openRouter;
-        if (apiKeys.gemini !== undefined) modalProps.geminiApiKey = apiKeys.gemini;
+      if (apiKeys.openRouter !== undefined) modalProps.openRouterApiKey = apiKeys.openRouter;
+      if (apiKeys.gemini !== undefined) modalProps.geminiApiKey = apiKeys.gemini;
 
-        if (newText !== undefined && newText !== previousText) {
-          startNewSession();
-        } else {
-          sessionPending = 0;
-          sessionSuccessCount = 0;
-          sessionLastError = '';
-          modalProps.responses = [];
-          modalProps.activeResponseIndex = 0;
-          modalProps.pendingResponses = 0;
-          modalProps.result = undefined;
-          modalProps.error = '';
-          modalProps.isProviderError = false;
-        }
-        if (textToUse) fetchExplanation(textToUse, newModelId);
-      }, 200);
+      if (newText !== undefined && newText !== previousText) {
+        startNewSession();
+      }
+      if (textToUse) fetchExplanation(textToUse, newModelId);
     });
   },
 });
@@ -144,6 +134,7 @@ function startNewSession() {
   modalProps.responses = [];
   modalProps.activeResponseIndex = 0;
   modalProps.pendingResponses = 0;
+  modalProps.pendingModelIds = [];
   modalProps.result = undefined;
   modalProps.error = '';
   modalProps.isProviderError = false;
@@ -306,6 +297,9 @@ async function fetchExplanation(text: string, currentModelId: string) {
   const sessionId = activeSessionId;
   sessionPending += 1;
   modalProps.pendingResponses = sessionPending;
+  if (!modalProps.pendingModelIds.includes(currentModelId)) {
+    modalProps.pendingModelIds = [...modalProps.pendingModelIds, currentModelId];
+  }
   const requestStart = performance.now();
 
   chrome.runtime.sendMessage(
@@ -315,6 +309,7 @@ async function fetchExplanation(text: string, currentModelId: string) {
       if (!svelteApp || !contentContainer) return;
       sessionPending = Math.max(0, sessionPending - 1);
       modalProps.pendingResponses = sessionPending;
+      modalProps.pendingModelIds = modalProps.pendingModelIds.filter((id) => id !== currentModelId);
 
       if (response?.error) {
         const responseTimeMs = Math.round(performance.now() - requestStart);
@@ -326,15 +321,20 @@ async function fetchExplanation(text: string, currentModelId: string) {
           responseTimeMs,
           receivedAt: Date.now(),
         };
-        modalProps.responses = [...modalProps.responses, entry];
 
-        if (modalProps.responses.length === 1) {
-          modalProps.activeResponseIndex = 0;
-          modalProps.result = undefined;
-          modalProps.isLoading = false;
-          modalProps.error = response.error;
-          modalProps.isProviderError = true;
+        const existingIndex = modalProps.responses.findIndex((r) => r.modelId === currentModelId);
+        if (existingIndex !== -1) {
+          modalProps.responses[existingIndex] = entry;
+          modalProps.activeResponseIndex = existingIndex;
+        } else {
+          modalProps.responses = [...modalProps.responses, entry];
+          modalProps.activeResponseIndex = modalProps.responses.length - 1;
         }
+
+        modalProps.result = undefined;
+        modalProps.isLoading = false;
+        modalProps.error = response.error;
+        modalProps.isProviderError = true;
 
         if (sessionSuccessCount === 0 && sessionPending === 0) {
           modalProps.isLoading = false;
@@ -352,14 +352,35 @@ async function fetchExplanation(text: string, currentModelId: string) {
         };
         sessionSuccessCount += 1;
         modalProps.isLoading = false;
-        modalProps.responses = [...modalProps.responses, entry];
 
-        if (modalProps.responses.length === 1) {
-          modalProps.activeResponseIndex = 0;
-          modalProps.result = response.result;
-          modalProps.isLoading = false;
-          modalProps.error = '';
-          modalProps.isProviderError = false;
+        const existingIndex = modalProps.responses.findIndex((r) => r.modelId === currentModelId);
+        if (existingIndex !== -1) {
+          modalProps.responses[existingIndex] = entry;
+          modalProps.activeResponseIndex = existingIndex;
+        } else {
+          modalProps.responses = [...modalProps.responses, entry];
+          modalProps.activeResponseIndex = modalProps.responses.length - 1;
+        }
+
+        modalProps.result = response.result;
+        modalProps.isLoading = false;
+        modalProps.error = '';
+        modalProps.isProviderError = false;
+
+        // Trace minimum response time and set best model
+        const successfulResponses = modalProps.responses.filter((r) => r.status === 'success');
+        if (successfulResponses.length > 0) {
+          const fastest = successfulResponses.reduce((min, curr) =>
+            curr.responseTimeMs < min.responseTimeMs ? curr : min
+          );
+          chrome.storage.sync.get(['modelId'], (data) => {
+            if (data.modelId !== fastest.modelId) {
+              console.log(
+                `Switching default model to ${fastest.modelId} (${fastest.responseTimeMs}ms)`
+              );
+              chrome.storage.sync.set({ modelId: fastest.modelId });
+            }
+          });
         }
 
         // Setup save handler
@@ -394,15 +415,20 @@ async function fetchExplanation(text: string, currentModelId: string) {
           responseTimeMs,
           receivedAt: Date.now(),
         };
-        modalProps.responses = [...modalProps.responses, entry];
 
-        if (modalProps.responses.length === 1) {
-          modalProps.activeResponseIndex = 0;
-          modalProps.result = undefined;
-          modalProps.isLoading = false;
-          modalProps.error = sessionLastError;
-          modalProps.isProviderError = true;
+        const existingIndex = modalProps.responses.findIndex((r) => r.modelId === currentModelId);
+        if (existingIndex !== -1) {
+          modalProps.responses[existingIndex] = entry;
+          modalProps.activeResponseIndex = existingIndex;
+        } else {
+          modalProps.responses = [...modalProps.responses, entry];
+          modalProps.activeResponseIndex = modalProps.responses.length - 1;
         }
+
+        modalProps.result = undefined;
+        modalProps.isLoading = false;
+        modalProps.error = sessionLastError;
+        modalProps.isProviderError = true;
 
         if (sessionSuccessCount === 0 && sessionPending === 0) {
           modalProps.isLoading = false;

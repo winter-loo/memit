@@ -11,6 +11,8 @@
     idPrefix: string;
     buttonText?: string;
     compact?: boolean;
+    disabledModels?: string[];
+    badge?: import('svelte').Snippet;
   }
 
   let {
@@ -22,7 +24,11 @@
     idPrefix,
     buttonText = 'Try Again',
     compact = true,
+    disabledModels = [],
+    badge,
   }: Props = $props();
+
+  const isCurrentModelPending = $derived(disabledModels.includes(modelId));
 </script>
 
 <div class="model-selector" class:compact>
@@ -31,7 +37,10 @@
     {#each MODEL_GROUPS as group (group.label)}
       <optgroup label={group.label}>
         {#each group.models as model (model.id)}
-          <option value={model.id}>{model.name}</option>
+          <option value={model.id} disabled={disabledModels.includes(model.id)}>
+            {model.name}
+            {disabledModels.includes(model.id) ? '(Pending)' : ''}
+          </option>
         {/each}
       </optgroup>
     {/each}
@@ -70,18 +79,36 @@
   <button
     class="retry-btn"
     class:compact
+    disabled={isCurrentModelPending}
     onclick={() =>
       onRetry(modelId, {
         openRouter: openRouterApiKey,
         gemini: geminiApiKey,
       })}
   >
-    <RefreshCw size={compact ? 16 : 18} />
-    {buttonText}
+    <div class="btn-content">
+      <RefreshCw size={compact ? 16 : 18} />
+      {isCurrentModelPending ? 'Request Pending...' : buttonText}
+    </div>
+    {#if badge}
+      {@render badge()}
+    {/if}
   </button>
 {/if}
 
 <style>
+  .btn-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .retry-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--text-muted);
+  }
+
   .model-selector,
   .api-key-input {
     display: flex;
@@ -133,11 +160,11 @@
     font-weight: 600;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--spacing-sm);
     transition: transform var(--transition-fast);
     width: 100%;
     max-width: 280px;
-    justify-content: center;
     font-size: 14px;
     cursor: pointer;
   }
