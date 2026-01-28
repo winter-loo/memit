@@ -4,6 +4,7 @@
   import ResponseStatusBar from './ResponseStatusBar.svelte';
   import RetryModelSelector from './RetryModelSelector.svelte';
   import Skeleton from './Skeleton.svelte';
+  import { countWords } from '../lib/text-utils';
   import { Check, CircleX, Frown, Gamepad2, Languages, RefreshCw, Save, X } from '@lucide/svelte';
   import { fly } from 'svelte/transition';
 
@@ -100,6 +101,9 @@
   let localGeminiApiKey = $state('');
   // eslint-disable-next-line svelte/prefer-writable-derived
   let localText = $state('');
+
+  const localWordCount = $derived(countWords(localText));
+  const isTooLongError = $derived(error.toLowerCase().includes('too long'));
 
   // Sync state if props change externally
   $effect(() => {
@@ -243,7 +247,7 @@
             disabledModels={pendingModelIds}
             badge={badgeSnippet}
           />
-        {:else if error.toLowerCase().includes('too long')}
+        {:else if isTooLongError }
           <div class="text-shortener">
             <label for="error-text-shorten">Shorten your selection:</label>
             <textarea
@@ -272,7 +276,13 @@
           </div>
         {/if}
 
-        <p class="error-message">{error}</p>
+        {#if error && isTooLongError}
+          <p class="hint-message">
+            The text should have at most 20 words and current length is {localWordCount}.
+          </p>
+        {:else if error}
+          <p class="error-message">{error}</p>
+        {/if}
       </div>
     {:else if responses.length > 0}
       {#if activeResponse?.status === 'error'}
@@ -506,6 +516,15 @@
     font-size: 14px;
     line-height: 1.6;
     color: var(--text-secondary);
+    margin: 0;
+    max-width: 320px;
+  }
+
+  .hint-message {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--primary-color);
+    font-weight: 500;
     margin: 0;
     max-width: 320px;
   }
