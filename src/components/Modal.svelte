@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { DictionaryResponse } from '../lib/explanation/types';
-  import { MODEL_GROUPS } from '../lib/explanation/models';
   import ExplanationResult from './ExplanationResult.svelte';
+  import RetryModelSelector from './RetryModelSelector.svelte';
   import Skeleton from './Skeleton.svelte';
   import {
     Check,
@@ -107,11 +107,7 @@
     return { provider: formatProvider(prefix ?? ''), model: rest };
   }
 
-  function truncateModelPartsByChars(
-    provider: string,
-    model: string,
-    maxChars: number
-  ) {
+  function truncateModelPartsByChars(provider: string, model: string, maxChars: number) {
     const providerText = provider.trim();
     const modelText = model.trim();
     const sep = modelText ? ' / ' : '';
@@ -136,10 +132,7 @@
       };
     }
 
-    const remainingForModel = Math.max(
-      maxChars - providerText.length - sep.length,
-      0
-    );
+    const remainingForModel = Math.max(maxChars - providerText.length - sep.length, 0);
     const truncatedModel =
       modelText.length > remainingForModel
         ? `${modelText.slice(0, remainingForModel).trimEnd()}...`
@@ -165,7 +158,7 @@
    * 2. We need a "buffered state" that allows users to pick a model locally without immediately
    *    triggering a global storage update.
    * 3. The $effect ensures the local UI still stays in sync if the global settings change externally.
-   * 4. Changes are only committed to global storage when the user clicks 'Stop and Retry'.
+   * 4. Changes are only committed to global storage when the user clicks 'Switch Provider'.
    */
   // eslint-disable-next-line svelte/prefer-writable-derived
   let localModelId = $state('');
@@ -265,54 +258,15 @@
                 Switching model...
               </div>
             {:else}
-              <div class="model-selector compact">
-                <label for="loading-model-select">Wait too long? Try another model:</label>
-                <select id="loading-model-select" bind:value={localModelId}>
-                  {#each MODEL_GROUPS as group (group.label)}
-                    <optgroup label={group.label}>
-                      {#each group.models as model (model.id)}
-                        <option value={model.id}>{model.name}</option>
-                      {/each}
-                    </optgroup>
-                  {/each}
-                </select>
-              </div>
-
-              {#if localModelId.startsWith('openrouter:')}
-                <div class="api-key-input compact">
-                  <input
-                    type="password"
-                    id="loading-openrouter-key"
-                    bind:value={localOpenRouterApiKey}
-                    placeholder="OpenRouter API Key"
-                  />
-                </div>
-              {/if}
-
-              {#if localModelId.startsWith('gemini:')}
-                <div class="api-key-input compact">
-                  <input
-                    type="password"
-                    id="loading-gemini-key"
-                    bind:value={localGeminiApiKey}
-                    placeholder="Gemini API Key"
-                  />
-                </div>
-              {/if}
-
-              {#if onRetry}
-                <button
-                  class="retry-btn compact"
-                  onclick={() =>
-                    onRetry?.(localModelId, {
-                      openRouter: localOpenRouterApiKey,
-                      gemini: localGeminiApiKey,
-                    })}
-                >
-                  <RefreshCw size={16} />
-                  Stop and Retry
-                </button>
-              {/if}
+              <RetryModelSelector
+                bind:modelId={localModelId}
+                bind:openRouterApiKey={localOpenRouterApiKey}
+                bind:geminiApiKey={localGeminiApiKey}
+                {onRetry}
+                label="Wait too long? Try another model:"
+                idPrefix="loading"
+                buttonText="Switch Provider"
+              />
             {/if}
           </div>
         {/if}
@@ -325,56 +279,14 @@
         <h3 class="error-title">Something went wrong</h3>
 
         {#if isProviderError}
-          <div class="model-selector">
-            <label for="error-model-select">Try another model:</label>
-            <select id="error-model-select" bind:value={localModelId}>
-              {#each MODEL_GROUPS as group (group.label)}
-                <optgroup label={group.label}>
-                  {#each group.models as model (model.id)}
-                    <option value={model.id}>{model.name}</option>
-                  {/each}
-                </optgroup>
-              {/each}
-            </select>
-          </div>
-
-          {#if localModelId.startsWith('openrouter:')}
-            <div class="api-key-input">
-              <label for="modal-openrouter-key">OpenRouter API Key:</label>
-              <input
-                type="password"
-                id="modal-openrouter-key"
-                bind:value={localOpenRouterApiKey}
-                placeholder="sk-or-v1-..."
-              />
-            </div>
-          {/if}
-
-          {#if localModelId.startsWith('gemini:')}
-            <div class="api-key-input">
-              <label for="modal-gemini-key">Gemini API Key:</label>
-              <input
-                type="password"
-                id="modal-gemini-key"
-                bind:value={localGeminiApiKey}
-                placeholder="AIzaSy..."
-              />
-            </div>
-          {/if}
-
-          {#if onRetry}
-            <button
-              class="retry-btn"
-              onclick={() =>
-                onRetry?.(localModelId, {
-                  openRouter: localOpenRouterApiKey,
-                  gemini: localGeminiApiKey,
-                })}
-            >
-              <RefreshCw size={18} />
-              Try Again
-            </button>
-          {/if}
+          <RetryModelSelector
+            bind:modelId={localModelId}
+            bind:openRouterApiKey={localOpenRouterApiKey}
+            bind:geminiApiKey={localGeminiApiKey}
+            {onRetry}
+            idPrefix="modal"
+            compact={false}
+          />
         {:else if error.toLowerCase().includes('too long')}
           <div class="text-shortener">
             <label for="error-text-shorten">Shorten your selection:</label>
@@ -499,9 +411,15 @@
                     </div>
                   </div>
                   <div class="response-menu-right">
-                    <span class="response-menu-time">{formatResponseTime(response.responseTimeMs)}</span>
+                    <span class="response-menu-time"
+                      >{formatResponseTime(response.responseTimeMs)}</span
+                    >
                     {#if response.status === 'error'}
-                      <CircleX size={16} class="response-status-icon is-error" fill="currentColor" />
+                      <CircleX
+                        size={16}
+                        class="response-status-icon is-error"
+                        fill="currentColor"
+                      />
                     {:else if index === activeResponseIndex}
                       <CircleCheck
                         size={16}
@@ -531,6 +449,16 @@
             <CircleX size={16} />
             Request failed
           </div>
+
+          <RetryModelSelector
+            bind:modelId={localModelId}
+            bind:openRouterApiKey={localOpenRouterApiKey}
+            bind:geminiApiKey={localGeminiApiKey}
+            {onRetry}
+            idPrefix="error-response"
+          />
+
+          <div class="error-separator"></div>
           <p class="response-error-message">{activeResponse.error}</p>
         </div>
       {:else if activeResponse?.result}
@@ -585,7 +513,6 @@
     justify-content: center;
   }
 
-
   .brand-name {
     font-size: 1rem;
     font-weight: 700;
@@ -631,7 +558,6 @@
     border-color: var(--error-color);
     color: var(--error-color);
   }
-
 
   .modal-body {
     flex: 1;
@@ -731,7 +657,9 @@
     border-radius: 6px;
     background: transparent;
     border: none;
-    transition: color 0.15s ease, background-color 0.15s ease;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
   }
 
   .response-icon-btn:hover:not(:disabled) {
@@ -780,7 +708,9 @@
     color: #333333;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
   .response-menu-item:hover {
@@ -843,10 +773,6 @@
     color: #ef4444;
   }
 
-  .response-menu-item:hover .response-status-icon:not(.is-active):not(.is-error) {
-    color: #6c757d;
-  }
-
   .response-error {
     margin: var(--spacing-lg);
     border: 1px solid #fee2e2;
@@ -859,16 +785,25 @@
   .response-error-title {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: var(--spacing-sm);
     font-weight: 700;
     font-size: 13px;
     margin-bottom: var(--spacing-xs);
+    text-align: left;
   }
 
   .response-error-message {
     font-size: 12px;
     margin: 0;
     line-height: 1.5;
+  }
+
+  .error-separator {
+    height: 1px;
+    background: #fee2e2;
+    margin: var(--spacing-md) 0;
+    width: 100%;
   }
 
   .loading-fallback {
@@ -927,7 +862,6 @@
     margin-bottom: var(--spacing-sm);
   }
 
-
   .error-title {
     font-size: 1.25rem;
     font-weight: 700;
@@ -944,8 +878,6 @@
     max-width: 320px;
   }
 
-  .model-selector,
-  .api-key-input,
   .text-shortener {
     display: flex;
     flex-direction: column;
@@ -960,22 +892,12 @@
     max-width: 320px;
   }
 
-  .model-selector.compact,
-  .api-key-input.compact {
-    margin-top: 0;
-    gap: 4px;
-  }
-
-  .model-selector label,
-  .api-key-input label,
   .text-shortener label {
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
   }
 
-  .model-selector select,
-  .api-key-input input,
   .text-shortener textarea {
     background: var(--card-bg);
     color: var(--text-main);
@@ -989,12 +911,6 @@
   .text-shortener textarea {
     resize: vertical;
     line-height: 1.5;
-  }
-
-  .model-selector.compact select,
-  .api-key-input.compact input {
-    padding: 6px 10px;
-    font-size: 13px;
   }
 
   .retry-btn {
@@ -1024,7 +940,6 @@
     transform: translateY(-1px);
     filter: brightness(1.1);
   }
-
 
   /* Custom scrollbar for the modal body */
   .custom-scrollbar::-webkit-scrollbar {

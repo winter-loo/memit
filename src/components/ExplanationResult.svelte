@@ -227,7 +227,6 @@
     color: var(--primary-color);
   }
 
-
   /* Simple Def Card */
   .simple-def-card {
     margin: 0 var(--spacing-lg) var(--spacing-lg);
