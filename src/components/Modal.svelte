@@ -485,7 +485,10 @@
                 {@const parts = getModelParts(response.modelId)}
                 <button
                   class={`response-menu-item ${index === activeResponseIndex ? 'is-active' : ''}`}
-                  onclick={() => onSelectResponse?.(index)}
+                  onclick={() => {
+                    onSelectResponse?.(index);
+                    showResponseMenu = false;
+                  }}
                 >
                   <div class="response-menu-left">
                     <span class="response-menu-badge">{index + 1}/{totalResponses}</span>
