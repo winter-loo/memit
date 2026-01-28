@@ -5,7 +5,19 @@
   import RetryModelSelector from './RetryModelSelector.svelte';
   import Skeleton from './Skeleton.svelte';
   import { countWords } from '../lib/text-utils';
-  import { Check, CircleX, Frown, Gamepad2, Languages, RefreshCw, Save, X } from '@lucide/svelte';
+  import {
+    Check,
+    CircleX,
+    CloudAlert,
+    CloudCheck,
+    CloudUpload,
+    Frown,
+    Gamepad2,
+    Languages,
+    Loader2,
+    RefreshCw,
+    X,
+  } from '@lucide/svelte';
   import { fly } from 'svelte/transition';
 
   interface Props {
@@ -173,12 +185,16 @@
         class="action-btn"
         onclick={onSave}
         disabled={isSaving || isSaved || !result}
-        title="Save to Anki"
+        title={saveError ? 'Error saving' : isSaved ? 'Saved to Anki' : 'Save to Anki'}
       >
-        {#if isSaved}
-          <Check size={20} />
+        {#if isSaving}
+          <CloudUpload size={20} class="pulsing text-primary" />
+        {:else if saveError}
+          <CloudAlert size={20} class="text-error" />
+        {:else if isSaved}
+          <CloudCheck size={20} class="text-success" />
         {:else}
-          <Save size={20} />
+          <CloudUpload size={20} />
         {/if}
       </button>
       <button class="action-btn" title="Practice">
@@ -448,6 +464,18 @@
     width: 100%;
   }
 
+  .text-error {
+    color: var(--error-color);
+  }
+
+  :global(.text-success) {
+    color: var(--success-color);
+  }
+
+  :global(.text-primary) {
+    color: var(--primary-color);
+  }
+
   .loading-fallback {
     padding: var(--spacing-md) var(--spacing-lg);
     border-top: 1px solid var(--border-color);
@@ -597,6 +625,10 @@
   }
 
   .response-badge-inline.pulsing {
+    animation: pulse 1.5s infinite ease-in-out;
+  }
+
+  :global(.pulsing) {
     animation: pulse 1.5s infinite ease-in-out;
   }
 
