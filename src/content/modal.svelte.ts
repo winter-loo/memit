@@ -24,6 +24,20 @@ interface ResponseEntry {
   receivedAt: number;
 }
 
+interface QueryState {
+  text: string;
+  responses: ResponseEntry[];
+  activeResponseIndex: number;
+  result?: DictionaryResponse;
+  error: string;
+  isProviderError: boolean;
+  isSaved: boolean;
+  saveError: string;
+}
+
+const historyStack: QueryState[] = [];
+const forwardStack: QueryState[] = [];
+
 interface ModalProps {
   result?: DictionaryResponse;
   isLoading: boolean;
@@ -50,6 +64,9 @@ interface ModalProps {
     apiKeys: { openRouter?: string; gemini?: string },
     newText?: string
   ) => void;
+  onNewQuery: (text: string) => void;
+  onBack?: () => void;
+  onForward?: () => void;
 }
 
 // Reactive state for modal props
@@ -124,7 +141,87 @@ const modalProps = $state<ModalProps>({
       if (textToUse) fetchExplanation(textToUse, newModelId);
     });
   },
+  onNewQuery: (newText: string) => {
+    const wordCount = countWords(newText);
+    const maxWords = 20;
+
+    // Capture current state into history
+    const currentState = captureCurrentState();
+    historyStack.push(currentState);
+
+    // Clear forward stack on new query
+    forwardStack.length = 0;
+
+    updateNavigationHandlers();
+
+    // Start fresh
+    startNewSession();
+    modalProps.text = newText;
+
+    if (wordCount > maxWords) {
+      modalProps.error = `Selection too long (${wordCount} words). Please select less than ${maxWords} words.`;
+      modalProps.isProviderError = false;
+    } else {
+      modalProps.isLoading = true;
+      fetchExplanation(newText, modalProps.modelId);
+    }
+  },
 });
+
+function captureCurrentState(): QueryState {
+  return {
+    text: modalProps.text,
+    responses: [...modalProps.responses],
+    activeResponseIndex: modalProps.activeResponseIndex,
+    result: modalProps.result,
+    error: modalProps.error,
+    isProviderError: modalProps.isProviderError,
+    isSaved: modalProps.isSaved,
+    saveError: modalProps.saveError,
+  };
+}
+
+function updateNavigationHandlers() {
+  modalProps.onBack = historyStack.length > 0 ? handleBack : undefined;
+  modalProps.onForward = forwardStack.length > 0 ? handleForward : undefined;
+}
+
+function restoreState(state: QueryState) {
+  // Increment sessionId to cancel any pending requests
+  activeSessionId += 1;
+
+  modalProps.text = state.text;
+  modalProps.responses = state.responses;
+  modalProps.activeResponseIndex = state.activeResponseIndex;
+  modalProps.result = state.result;
+  modalProps.error = state.error;
+  modalProps.isProviderError = state.isProviderError;
+  modalProps.isSaved = state.isSaved;
+  modalProps.saveError = state.saveError;
+  modalProps.isLoading = false;
+  modalProps.pendingResponses = 0;
+  modalProps.pendingModelIds = [];
+
+  updateNavigationHandlers();
+}
+
+function handleBack() {
+  const previousState = historyStack.pop();
+  if (previousState) {
+    const currentState = captureCurrentState();
+    forwardStack.push(currentState);
+    restoreState(previousState);
+  }
+}
+
+function handleForward() {
+  const nextState = forwardStack.pop();
+  if (nextState) {
+    const currentState = captureCurrentState();
+    historyStack.push(currentState);
+    restoreState(nextState);
+  }
+}
 
 function startNewSession() {
   activeSessionId += 1;
@@ -138,6 +235,9 @@ function startNewSession() {
   modalProps.result = undefined;
   modalProps.error = '';
   modalProps.isProviderError = false;
+  modalProps.isSaved = false;
+  modalProps.isSaving = false;
+  modalProps.saveError = '';
 }
 
 function ensureOverlayHost() {

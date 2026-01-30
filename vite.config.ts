@@ -6,26 +6,31 @@ import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.json';
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    svelte({
-      // https://github.com/sveltejs/svelte/issues/5869
-      emitCss: false,
-    }),
-    svelteTesting(),
-    crx({ manifest }),
-  ],
-  build: {
-    rollupOptions: {
-      input: {
-        options: 'options.html',
+export default defineConfig(({ mode }) => {
+  const isDevBuild = mode === 'development';
+
+  return {
+    plugins: [
+      svelte({
+        // https://github.com/sveltejs/svelte/issues/5869
+        emitCss: false,
+      }),
+      svelteTesting(),
+      crx({ manifest }),
+    ],
+    build: {
+      sourcemap: isDevBuild,
+      minify: isDevBuild ? false : 'esbuild',
+      rollupOptions: {
+        input: {
+          options: 'options.html',
+        },
       },
     },
-  },
-  // @ts-expect-error -- vitest augments Vite config at runtime
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup-vitest.ts'],
-    globals: true,
-  },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./tests/setup-vitest.ts'],
+      globals: true,
+    },
+  };
 });

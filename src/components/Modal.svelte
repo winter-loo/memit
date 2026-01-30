@@ -3,10 +3,10 @@
   import ExplanationResult from './ExplanationResult.svelte';
   import ResponseStatusBar from './ResponseStatusBar.svelte';
   import RetryModelSelector from './RetryModelSelector.svelte';
+  import SelectionToolbar from './SelectionToolbar.svelte';
   import Skeleton from './Skeleton.svelte';
   import { countWords } from '../lib/text-utils';
   import {
-    Check,
     CircleX,
     CloudAlert,
     CloudCheck,
@@ -14,7 +14,6 @@
     Frown,
     Gamepad2,
     Languages,
-    Loader2,
     RefreshCw,
     X,
   } from '@lucide/svelte';
@@ -37,6 +36,9 @@
       apiKeys: { openRouter?: string; gemini?: string },
       newText?: string
     ) => void;
+    onNewQuery?: (text: string) => void;
+    onBack?: () => void;
+    onForward?: () => void;
     isSaving?: boolean;
     isRetrying?: boolean;
     saveError?: string;
@@ -68,6 +70,9 @@
     onClose,
     onSave,
     onRetry,
+    onNewQuery,
+    onBack,
+    onForward,
     isSaving = false,
     isRetrying = false,
     saveError = '',
@@ -116,6 +121,92 @@
 
   const localWordCount = $derived(countWords(localText));
   const isTooLongError = $derived(error.toLowerCase().includes('too long'));
+
+  // Selection toolbar state
+  let selectionToolbar = $state<{ x: number; y: number; text: string; range: Range } | null>(null);
+  let modalRef: HTMLDivElement;
+
+  function mergeRanges(ranges: Range[]) {
+    if (ranges.length === 0) {
+      return null;
+    }
+
+    let startRange = ranges[0];
+    let endRange = ranges[0];
+
+    for (let i = 1; i < ranges.length; i += 1) {
+      const range = ranges[i];
+      if (range.compareBoundaryPoints(Range.START_TO_START, startRange) < 0) {
+        startRange = range;
+      }
+      if (range.compareBoundaryPoints(Range.END_TO_END, endRange) > 0) {
+        endRange = range;
+      }
+    }
+
+    const merged = document.createRange();
+    merged.setStart(startRange.startContainer, startRange.startOffset);
+    merged.setEnd(endRange.endContainer, endRange.endOffset);
+    return merged;
+  }
+
+  function closeSelectionToolbar() {
+    selectionToolbar = null;
+  }
+
+  function handleSelection() {
+    const rootNode = modalRef?.getRootNode();
+    const selection =
+      rootNode instanceof ShadowRoot && (rootNode as unknown as Document).getSelection
+        ? (rootNode as unknown as Document).getSelection()
+        : window.getSelection();
+
+    console.log('handleSelection:', selection, selection?.rangeCount, selection?.toString());
+
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      closeSelectionToolbar();
+      return;
+    }
+
+    console.log('range count: ', selection.rangeCount);
+    const range = selection.getRangeAt(0);
+    const container = modalRef;
+
+    console.log('Container contains:', container?.contains(range.commonAncestorContainer));
+
+    // Check if selection is inside the modal
+    if (container && container.contains(range.commonAncestorContainer)) {
+      const text = selection.toString().trim();
+      if (text) {
+        const rect = range.getBoundingClientRect();
+        // Calculate position relative to viewport since toolbar is fixed
+        selectionToolbar = {
+          x: rect.left + rect.width / 2,
+          y: rect.top,
+          text,
+          range,
+        };
+        console.log('Selection toolbar open:', selectionToolbar);
+        return;
+      }
+    }
+    closeSelectionToolbar();
+  }
+
+  // Handle document-level selection change to clear toolbar when clicking outside
+  function onDocumentSelectionChange() {
+    // We defer slightly to let the click event potentially clear it or new selection form
+    setTimeout(() => {
+      handleSelection();
+    }, 10);
+  }
+
+  $effect(() => {
+    document.addEventListener('selectionchange', onDocumentSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', onDocumentSelectionChange);
+    };
+  });
 
   // Sync state if props change externally
   $effect(() => {
@@ -172,7 +263,7 @@
   {/if}
 {/snippet}
 
-<div class="modal-container" role="dialog" aria-modal="true">
+<div class="modal-container" role="dialog" aria-modal="true" bind:this={modalRef}>
   <header class="modal-header">
     <div class="brand">
       <div class="brand-icon">
@@ -322,14 +413,97 @@
           <p class="response-error-message">{activeResponse.error}</p>
         </div>
       {:else if activeResponse?.result}
-        <ExplanationResult result={activeResponse.result} {saveError} />
+        <ExplanationResult result={activeResponse.result} {saveError} {onBack} {onForward} />
       {:else if result}
-        <ExplanationResult {result} {saveError} />
+        <ExplanationResult {result} {saveError} {onBack} {onForward} />
       {/if}
     {:else if result}
-      <ExplanationResult {result} {saveError} />
+      <ExplanationResult {result} {saveError} {onBack} {onForward} />
     {/if}
   </div>
+
+  {#if selectionToolbar}
+    <SelectionToolbar
+      x={selectionToolbar.x}
+      y={selectionToolbar.y}
+      onExplain={() => {
+        if (selectionToolbar) {
+          onNewQuery?.(selectionToolbar.text);
+          closeSelectionToolbar();
+        }
+      }}
+      onHighlight={() => {
+        if (selectionToolbar) {
+          try {
+            const highlights = Array.from(modalRef.querySelectorAll('.highlight'));
+            const selectionRange = selectionToolbar.range;
+            console.log('my selection range: ', selectionRange);
+            const intersecting = highlights.filter((span) => selectionRange.intersectsNode(span));
+            const intersectingRanges = intersecting.map((span) => {
+              const range = document.createRange();
+              range.selectNodeContents(span);
+              return range;
+            });
+            // Capture the full boundary before mutating DOM so we can re-create the range later.
+            const boundaryRange = mergeRanges([selectionRange, ...intersectingRanges]);
+            if (!boundaryRange) {
+              closeSelectionToolbar();
+              return;
+            }
+            // Insert stable markers so DOM changes don't invalidate the intended range.
+            // We unwrap highlight spans next, which mutates text nodes and can stale existing
+            // Range objects. These markers pin the exact pre-mutation boundaries so we can
+            // rebuild a fresh Range between them afterward.
+            const startMarker = document.createComment('highlight-start');
+            const endMarker = document.createComment('highlight-end');
+            const endRange = boundaryRange.cloneRange();
+            endRange.collapse(false);
+            endRange.insertNode(endMarker);
+            const startRange = boundaryRange.cloneRange();
+            startRange.collapse(true);
+            startRange.insertNode(startMarker);
+
+            if (intersecting.length > 0) {
+              // Unwrap existing highlights that overlap the selection (toggle off).
+              intersecting.forEach((span) => {
+                const parent = span.parentNode;
+                if (!parent) {
+                  return;
+                }
+                while (span.firstChild) {
+                  parent.insertBefore(span.firstChild, span);
+                }
+                parent.removeChild(span);
+              });
+            }
+
+            // Rebuild the merged range from markers after unwrapping highlights.
+            const mergedRange = document.createRange();
+            mergedRange.setStartAfter(startMarker);
+            mergedRange.setEndBefore(endMarker);
+            startMarker.remove();
+            endMarker.remove();
+
+            const span = document.createElement('span');
+            span.className = 'highlight';
+            try {
+              mergedRange.surroundContents(span);
+            } catch {
+              // Fallback for partially-selected nodes (surroundContents would throw).
+              const contents = mergedRange.extractContents();
+              span.appendChild(contents);
+              mergedRange.insertNode(span);
+            }
+            // Normalize to merge adjacent text nodes after wrapping.
+            span.parentNode?.normalize();
+          } catch (e) {
+            console.error('Failed to highlight:', e);
+          }
+          closeSelectionToolbar();
+        }
+      }}
+    />
+  {/if}
 </div>
 
 <style>

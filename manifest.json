@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Screen Text Reader",
+  "name": "Memit",
   "version": "1.0.0",
   "permissions": ["contextMenus", "storage", "activeTab", "scripting"],
   "options_ui": {

@@ -1,16 +1,30 @@
 {
-  "name": "screen-text-reader",
+  "name": "memit",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:watch": "vite build --watch --mode development",
     "build": "vite build",
+    "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "test": "vitest --run",
     "lint": "eslint .",
-    "fmt": "prettier --write ."
+    "fmt": "prettier --write .",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged && pnpm check && pnpm build && pnpm fmt"
+  },
+  "lint-staged": {
+    "*.{js,ts,svelte,json,md,html,css}": [
+      "prettier --write"
+    ],
+    "*.{js,ts,svelte}": [
+      "eslint --fix"
+    ]
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "2.0.0-beta.33",
@@ -28,8 +42,10 @@
     "eslint-plugin-svelte": "^3.14.0",
     "globals": "^17.0.0",
     "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
     "prettier-plugin-svelte": "^3.4.1",
+    "simple-git-hooks": "^2.13.1",
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.4",
     "svelte-eslint-parser": "^1.4.1",

@@ -23,3 +23,14 @@ import { vi } from 'vitest';
     },
   },
 };
+
+if (!HTMLElement.prototype.animate) {
+  Object.defineProperty(HTMLElement.prototype, 'animate', {
+    value: () => ({
+      onfinish: null,
+      cancel: () => {},
+      finished: Promise.resolve(),
+    }),
+    configurable: true,
+  });
+}

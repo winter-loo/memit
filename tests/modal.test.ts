@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { within } from '@testing-library/svelte';
 
 // Define chrome on global before importing the content script
 const chromeMock = {
@@ -54,8 +53,9 @@ describe('Modal Content Script', () => {
     const shadow = host?.shadowRoot;
     expect(shadow).toBeTruthy();
     if (shadow) {
-      const { getByText } = within(shadow as unknown as HTMLElement);
-      expect(getByText(/Selection too long/i)).toBeInTheDocument();
+      const hint = shadow.querySelector('.hint-message');
+      expect(hint).toBeInTheDocument();
+      expect(hint?.textContent).toMatch(/at most 20 words/i);
     }
   });
 });

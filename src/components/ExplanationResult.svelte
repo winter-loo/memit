@@ -6,6 +6,8 @@
     CircleMinus,
     History,
     Info,
+    MoveLeft,
+    MoveRight,
     Quote,
     TriangleAlert,
     Volume2,
@@ -14,9 +16,11 @@
   interface Props {
     result: DictionaryResponse;
     saveError?: string;
+    onBack?: () => void;
+    onForward?: () => void;
   }
 
-  let { result, saveError = '' }: Props = $props();
+  let { result, saveError = '', onBack, onForward }: Props = $props();
 
   type Tab = 'explanation' | 'usage' | 'origin';
   let activeTab = $state<Tab>('explanation');
@@ -51,7 +55,21 @@
   <!-- Simple Definition Card -->
   <div class="simple-def-card">
     <div class="def-group">
-      <h4 class="label">Simple Definition</h4>
+      <div class="def-header">
+        <h4 class="label">Simple Definition</h4>
+        <div class="nav-actions">
+          {#if onBack}
+            <button class="icon-btn-small nav-btn" onclick={onBack} title="Go Back">
+              <MoveLeft size={18} />
+            </button>
+          {/if}
+          {#if onForward}
+            <button class="icon-btn-small nav-btn" onclick={onForward} title="Go Forward">
+              <MoveRight size={18} />
+            </button>
+          {/if}
+        </div>
+      </div>
       <p class="text">{result.simple_definition}</p>
     </div>
     <div class="def-group">
@@ -238,6 +256,25 @@
     flex-direction: column;
     gap: var(--spacing-md);
     box-shadow: var(--shadow-sm);
+  }
+
+  .def-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .nav-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+
+  .nav-btn {
+    color: var(--text-muted);
+  }
+
+  .nav-btn:hover {
+    color: var(--primary-color);
   }
 
   .def-group {
