@@ -186,6 +186,12 @@ function updateNavigationHandlers() {
   modalProps.onForward = forwardStack.length > 0 ? handleForward : undefined;
 }
 
+function clearHistory() {
+  historyStack.length = 0;
+  forwardStack.length = 0;
+  updateNavigationHandlers();
+}
+
 function restoreState(state: QueryState) {
   // Increment sessionId to cancel any pending requests
   activeSessionId += 1;
@@ -554,6 +560,7 @@ async function fetchExplanation(text: string, currentModelId: string) {
 export function hideModal() {
   if (overlayHost) {
     overlayHost.style.display = 'none';
+    clearHistory();
     if (svelteApp) {
       unmount(svelteApp);
       svelteApp = null;
