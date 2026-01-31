@@ -197,7 +197,7 @@
 
   /* Word Header */
   .word-header {
-    padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
   }
 
   .word-line {
