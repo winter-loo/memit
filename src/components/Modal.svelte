@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DictionaryResponse } from '../lib/explanation/types';
   import ExplanationResult from './ExplanationResult.svelte';
+  import DraggableModal from './DraggableModal.svelte';
   import ResponseStatusBar from './ResponseStatusBar.svelte';
   import RetryModelSelector from './RetryModelSelector.svelte';
   import SelectionToolbar from './SelectionToolbar.svelte';
@@ -124,11 +125,7 @@
 
   // Selection toolbar state
   let selectionToolbar = $state<{ x: number; y: number; text: string; range: Range } | null>(null);
-  let modalRef: HTMLDivElement;
-  let isDragging = $state(false);
-  let dragStart = { x: 0, y: 0 };
-  let dragOrigin = { x: 0, y: 0 };
-  let hostElement: HTMLElement | null = null;
+  let modalRef = $state<HTMLDivElement | null>(null);
 
   function mergeRanges(ranges: Range[]) {
     if (ranges.length === 0) {
@@ -156,53 +153,6 @@
 
   function closeSelectionToolbar() {
     selectionToolbar = null;
-  }
-
-  function resolveHostElement() {
-    if (hostElement) return hostElement;
-    const root = modalRef?.getRootNode();
-    if (root instanceof ShadowRoot && root.host instanceof HTMLElement) {
-      hostElement = root.host;
-    }
-    return hostElement;
-  }
-
-  function getHostPosition() {
-    const host = resolveHostElement();
-    if (!host) return { x: 0, y: 0 };
-    const left = Number.parseFloat(host.style.left);
-    const top = Number.parseFloat(host.style.top);
-    if (Number.isFinite(left) && Number.isFinite(top)) {
-      return { x: left, y: top };
-    }
-    const rect = host.getBoundingClientRect();
-    return { x: rect.left + window.scrollX, y: rect.top + window.scrollY };
-  }
-
-  function onHeaderPointerDown(event: PointerEvent) {
-    if (event.button !== 0) return;
-    const target = event.target as HTMLElement;
-    if (target.closest('button')) return;
-    const host = resolveHostElement();
-    if (!host) return;
-    isDragging = true;
-    dragStart = { x: event.clientX, y: event.clientY };
-    dragOrigin = getHostPosition();
-    event.preventDefault();
-  }
-
-  function onWindowPointerMove(event: PointerEvent) {
-    if (!isDragging) return;
-    const host = resolveHostElement();
-    if (!host) return;
-    const dx = event.clientX - dragStart.x;
-    const dy = event.clientY - dragStart.y;
-    host.style.left = `${dragOrigin.x + dx}px`;
-    host.style.top = `${dragOrigin.y + dy}px`;
-  }
-
-  function stopDrag() {
-    isDragging = false;
   }
 
   function handleSelection() {
@@ -256,17 +206,6 @@
     document.addEventListener('selectionchange', onDocumentSelectionChange);
     return () => {
       document.removeEventListener('selectionchange', onDocumentSelectionChange);
-    };
-  });
-
-  $effect(() => {
-    window.addEventListener('pointermove', onWindowPointerMove);
-    window.addEventListener('pointerup', stopDrag);
-    window.addEventListener('pointercancel', stopDrag);
-    return () => {
-      window.removeEventListener('pointermove', onWindowPointerMove);
-      window.removeEventListener('pointerup', stopDrag);
-      window.removeEventListener('pointercancel', stopDrag);
     };
   });
 
@@ -325,8 +264,8 @@
   {/if}
 {/snippet}
 
-<div class="modal-container" role="dialog" aria-modal="true" bind:this={modalRef}>
-  <header class="modal-header" class:dragging={isDragging} onpointerdown={onHeaderPointerDown}>
+<DraggableModal bind:containerRef={modalRef}>
+  {#snippet header()}
     <div class="brand">
       <div class="brand-icon">
         <Languages size={20} />
@@ -357,247 +296,215 @@
         <X size={20} />
       </button>
     </div>
-  </header>
-
-  <div class="modal-body custom-scrollbar">
-    {#if showResponseBar && totalResponses > 1 && hasSuccess}
-      <ResponseStatusBar
-        {responses}
-        {activeResponseIndex}
-        {pendingResponses}
-        {onSelectResponse}
-        onClose={() => {
-          showResponseBar = false;
-        }}
-      />
-    {/if}
-
-    {#if isLoading && !hasSuccess}
-      <div class="loading-container">
-        <Skeleton {isRetrying} />
-        {#if showFallback}
-          <div class="loading-fallback" transition:fly={{ y: 50, duration: 400 }}>
-            {#if isRetrying}
-              <div class="retry-feedback">
-                <RefreshCw size={18} class="spinning" />
-                Switching model...
-              </div>
-            {:else}
-              <RetryModelSelector
-                bind:modelId={localModelId}
-                bind:openRouterApiKey={localOpenRouterApiKey}
-                bind:geminiApiKey={localGeminiApiKey}
-                onRetry={handleRetry}
-                label="Wait too long? Try another model:"
-                idPrefix="loading"
-                buttonText="Switch Provider"
-                disabledModels={pendingModelIds}
-                badge={badgeSnippet}
-              />
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {:else if error && responses.length === 0}
-      <div class="error-container">
-        <div class="error-icon">
-          <Frown size={32} />
-        </div>
-        <h3 class="error-title">Something went wrong</h3>
-
-        {#if isProviderError}
-          <RetryModelSelector
-            bind:modelId={localModelId}
-            bind:openRouterApiKey={localOpenRouterApiKey}
-            bind:geminiApiKey={localGeminiApiKey}
-            onRetry={handleRetry}
-            idPrefix="modal"
-            compact={false}
-            disabledModels={pendingModelIds}
-            badge={badgeSnippet}
-          />
-        {:else if isTooLongError}
-          <div class="text-shortener">
-            <label for="error-text-shorten">Shorten your selection:</label>
-            <textarea
-              id="error-text-shorten"
-              bind:value={localText}
-              placeholder="Edit your selection here..."
-              rows="4"
-            ></textarea>
-            {#if onRetry}
-              <button
-                class="retry-btn"
-                onclick={() =>
-                  handleRetry(
-                    localModelId,
-                    {
-                      openRouter: localOpenRouterApiKey,
-                      gemini: localGeminiApiKey,
-                    },
-                    localText
-                  )}
-              >
-                <RefreshCw size={18} />
-                Try Again with New Text
-              </button>
-            {/if}
-          </div>
-        {/if}
-
-        {#if error && isTooLongError}
-          <p class="hint-message">
-            The text should have at most 20 words and current length is {localWordCount}.
-          </p>
-        {:else if error}
-          <p class="error-message">{error}</p>
-        {/if}
-      </div>
-    {:else if responses.length > 0}
-      {#if activeResponse?.status === 'error'}
-        <div class="response-error">
-          <div class="response-error-title">
-            <CircleX size={16} />
-            Request failed
-          </div>
-
-          <RetryModelSelector
-            bind:modelId={localModelId}
-            bind:openRouterApiKey={localOpenRouterApiKey}
-            bind:geminiApiKey={localGeminiApiKey}
-            onRetry={handleRetry}
-            idPrefix="error-response"
-            disabledModels={pendingModelIds}
-            badge={badgeSnippet}
-          />
-
-          <div class="error-separator"></div>
-          <p class="response-error-message">{activeResponse.error}</p>
-        </div>
-      {:else if activeResponse?.result}
-        <ExplanationResult result={activeResponse.result} {saveError} {onBack} {onForward} />
-      {:else if result}
-        <ExplanationResult {result} {saveError} {onBack} {onForward} />
-      {/if}
-    {:else if result}
-      <ExplanationResult {result} {saveError} {onBack} {onForward} />
-    {/if}
-  </div>
-
-  {#if selectionToolbar}
-    <SelectionToolbar
-      x={selectionToolbar.x}
-      y={selectionToolbar.y}
-      onExplain={() => {
-        if (selectionToolbar) {
-          onNewQuery?.(selectionToolbar.text);
-          closeSelectionToolbar();
-        }
-      }}
-      onHighlight={() => {
-        if (selectionToolbar) {
-          try {
-            const highlights = Array.from(modalRef.querySelectorAll('.highlight'));
-            const selectionRange = selectionToolbar.range;
-            console.log('my selection range: ', selectionRange);
-            const intersecting = highlights.filter((span) => selectionRange.intersectsNode(span));
-            const intersectingRanges = intersecting.map((span) => {
-              const range = document.createRange();
-              range.selectNodeContents(span);
-              return range;
-            });
-            // Capture the full boundary before mutating DOM so we can re-create the range later.
-            const boundaryRange = mergeRanges([selectionRange, ...intersectingRanges]);
-            if (!boundaryRange) {
-              closeSelectionToolbar();
-              return;
-            }
-            // Insert stable markers so DOM changes don't invalidate the intended range.
-            // We unwrap highlight spans next, which mutates text nodes and can stale existing
-            // Range objects. These markers pin the exact pre-mutation boundaries so we can
-            // rebuild a fresh Range between them afterward.
-            const startMarker = document.createComment('highlight-start');
-            const endMarker = document.createComment('highlight-end');
-            const endRange = boundaryRange.cloneRange();
-            endRange.collapse(false);
-            endRange.insertNode(endMarker);
-            const startRange = boundaryRange.cloneRange();
-            startRange.collapse(true);
-            startRange.insertNode(startMarker);
-
-            if (intersecting.length > 0) {
-              // Unwrap existing highlights that overlap the selection (toggle off).
-              intersecting.forEach((span) => {
-                const parent = span.parentNode;
-                if (!parent) {
-                  return;
-                }
-                while (span.firstChild) {
-                  parent.insertBefore(span.firstChild, span);
-                }
-                parent.removeChild(span);
-              });
-            }
-
-            // Rebuild the merged range from markers after unwrapping highlights.
-            const mergedRange = document.createRange();
-            mergedRange.setStartAfter(startMarker);
-            mergedRange.setEndBefore(endMarker);
-            startMarker.remove();
-            endMarker.remove();
-
-            const span = document.createElement('span');
-            span.className = 'highlight';
-            try {
-              mergedRange.surroundContents(span);
-            } catch {
-              // Fallback for partially-selected nodes (surroundContents would throw).
-              const contents = mergedRange.extractContents();
-              span.appendChild(contents);
-              mergedRange.insertNode(span);
-            }
-            // Normalize to merge adjacent text nodes after wrapping.
-            span.parentNode?.normalize();
-          } catch (e) {
-            console.error('Failed to highlight:', e);
-          }
-          closeSelectionToolbar();
-        }
+  {/snippet}
+  {#if showResponseBar && totalResponses > 1 && hasSuccess}
+    <ResponseStatusBar
+      {responses}
+      {activeResponseIndex}
+      {pendingResponses}
+      {onSelectResponse}
+      onClose={() => {
+        showResponseBar = false;
       }}
     />
   {/if}
-</div>
+
+  {#if isLoading && !hasSuccess}
+    <div class="loading-container">
+      <Skeleton {isRetrying} />
+      {#if showFallback}
+        <div class="loading-fallback" transition:fly={{ y: 50, duration: 400 }}>
+          {#if isRetrying}
+            <div class="retry-feedback">
+              <RefreshCw size={18} class="spinning" />
+              Switching model...
+            </div>
+          {:else}
+            <RetryModelSelector
+              bind:modelId={localModelId}
+              bind:openRouterApiKey={localOpenRouterApiKey}
+              bind:geminiApiKey={localGeminiApiKey}
+              onRetry={handleRetry}
+              label="Wait too long? Try another model:"
+              idPrefix="loading"
+              buttonText="Switch Provider"
+              disabledModels={pendingModelIds}
+              badge={badgeSnippet}
+            />
+          {/if}
+        </div>
+      {/if}
+    </div>
+  {:else if error && responses.length === 0}
+    <div class="error-container">
+      <div class="error-icon">
+        <Frown size={32} />
+      </div>
+      <h3 class="error-title">Something went wrong</h3>
+
+      {#if isProviderError}
+        <RetryModelSelector
+          bind:modelId={localModelId}
+          bind:openRouterApiKey={localOpenRouterApiKey}
+          bind:geminiApiKey={localGeminiApiKey}
+          onRetry={handleRetry}
+          idPrefix="modal"
+          compact={false}
+          disabledModels={pendingModelIds}
+          badge={badgeSnippet}
+        />
+      {:else if isTooLongError}
+        <div class="text-shortener">
+          <label for="error-text-shorten">Shorten your selection:</label>
+          <textarea
+            id="error-text-shorten"
+            bind:value={localText}
+            placeholder="Edit your selection here..."
+            rows="4"
+          ></textarea>
+          {#if onRetry}
+            <button
+              class="retry-btn"
+              onclick={() =>
+                handleRetry(
+                  localModelId,
+                  {
+                    openRouter: localOpenRouterApiKey,
+                    gemini: localGeminiApiKey,
+                  },
+                  localText
+                )}
+            >
+              <RefreshCw size={18} />
+              Try Again with New Text
+            </button>
+          {/if}
+        </div>
+      {/if}
+
+      {#if error && isTooLongError}
+        <p class="hint-message">
+          The text should have at most 20 words and current length is {localWordCount}.
+        </p>
+      {:else if error}
+        <p class="error-message">{error}</p>
+      {/if}
+    </div>
+  {:else if responses.length > 0}
+    {#if activeResponse?.status === 'error'}
+      <div class="response-error">
+        <div class="response-error-title">
+          <CircleX size={16} />
+          Request failed
+        </div>
+
+        <RetryModelSelector
+          bind:modelId={localModelId}
+          bind:openRouterApiKey={localOpenRouterApiKey}
+          bind:geminiApiKey={localGeminiApiKey}
+          onRetry={handleRetry}
+          idPrefix="error-response"
+          disabledModels={pendingModelIds}
+          badge={badgeSnippet}
+        />
+
+        <div class="error-separator"></div>
+        <p class="response-error-message">{activeResponse.error}</p>
+      </div>
+    {:else if activeResponse?.result}
+      <ExplanationResult result={activeResponse.result} {saveError} {onBack} {onForward} />
+    {:else if result}
+      <ExplanationResult {result} {saveError} {onBack} {onForward} />
+    {/if}
+  {:else if result}
+    <ExplanationResult {result} {saveError} {onBack} {onForward} />
+  {/if}
+</DraggableModal>
+
+{#if selectionToolbar}
+  <SelectionToolbar
+    x={selectionToolbar.x}
+    y={selectionToolbar.y}
+    onExplain={() => {
+      if (selectionToolbar) {
+        onNewQuery?.(selectionToolbar.text);
+        closeSelectionToolbar();
+      }
+    }}
+    onHighlight={() => {
+      if (selectionToolbar) {
+        try {
+          const highlights = Array.from(modalRef?.querySelectorAll('.highlight') ?? []);
+          const selectionRange = selectionToolbar.range;
+          console.log('my selection range: ', selectionRange);
+          const intersecting = highlights.filter((span) => selectionRange.intersectsNode(span));
+          const intersectingRanges = intersecting.map((span) => {
+            const range = document.createRange();
+            range.selectNodeContents(span);
+            return range;
+          });
+          // Capture the full boundary before mutating DOM so we can re-create the range later.
+          const boundaryRange = mergeRanges([selectionRange, ...intersectingRanges]);
+          if (!boundaryRange) {
+            closeSelectionToolbar();
+            return;
+          }
+          // Insert stable markers so DOM changes don't invalidate the intended range.
+          // We unwrap highlight spans next, which mutates text nodes and can stale existing
+          // Range objects. These markers pin the exact pre-mutation boundaries so we can
+          // rebuild a fresh Range between them afterward.
+          const startMarker = document.createComment('highlight-start');
+          const endMarker = document.createComment('highlight-end');
+          const endRange = boundaryRange.cloneRange();
+          endRange.collapse(false);
+          endRange.insertNode(endMarker);
+          const startRange = boundaryRange.cloneRange();
+          startRange.collapse(true);
+          startRange.insertNode(startMarker);
+
+          if (intersecting.length > 0) {
+            // Unwrap existing highlights that overlap the selection (toggle off).
+            intersecting.forEach((span) => {
+              const parent = span.parentNode;
+              if (!parent) {
+                return;
+              }
+              while (span.firstChild) {
+                parent.insertBefore(span.firstChild, span);
+              }
+              parent.removeChild(span);
+            });
+          }
+
+          // Rebuild the merged range from markers after unwrapping highlights.
+          const mergedRange = document.createRange();
+          mergedRange.setStartAfter(startMarker);
+          mergedRange.setEndBefore(endMarker);
+          startMarker.remove();
+          endMarker.remove();
+
+          const span = document.createElement('span');
+          span.className = 'highlight';
+          try {
+            mergedRange.surroundContents(span);
+          } catch {
+            // Fallback for partially-selected nodes (surroundContents would throw).
+            const contents = mergedRange.extractContents();
+            span.appendChild(contents);
+            mergedRange.insertNode(span);
+          }
+          // Normalize to merge adjacent text nodes after wrapping.
+          span.parentNode?.normalize();
+        } catch (e) {
+          console.error('Failed to highlight:', e);
+        }
+        closeSelectionToolbar();
+      }
+    }}
+  />
+{/if}
 
 <style>
-  .modal-container {
-    background: var(--bg-dark);
-    width: 440px;
-    height: 600px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
-    color: var(--text-main);
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-header);
-    z-index: 20;
-    cursor: grab;
-  }
-
-  .modal-header.dragging {
-    cursor: grabbing;
-  }
-
   .brand {
     display: flex;
     align-items: center;
@@ -658,12 +565,6 @@
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--error-color);
     color: var(--error-color);
-  }
-
-  .modal-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
   }
 
   .loading-container {
@@ -883,17 +784,5 @@
     100% {
       opacity: 1;
     }
-  }
-
-  /* Custom scrollbar for the modal body */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: var(--bg-dark);
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 10px;
   }
 </style>
