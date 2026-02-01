@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { DictionaryResponse } from '../lib/explanation/types';
+  import DOMPurify from 'dompurify';
+  import { marked } from 'marked';
   import {
     ArrowLeftRight,
     Brain,
@@ -34,6 +36,11 @@
       ? result.ipa_pronunciation.substring(0, 17) + '...' + result.ipa_pronunciation.slice(-10)
       : result.ipa_pronunciation
   );
+
+  const detailedExplanationHtml = $derived(() => {
+    const rawHtml = marked.parse(result.detailed_explanation ?? '', { breaks: true }) as string;
+    return DOMPurify.sanitize(rawHtml);
+  });
 </script>
 
 <div class="explanation-container">
@@ -103,7 +110,8 @@
           <Info size={18} class="icon-orange" />
           Detailed Explanation
         </h3>
-        <p class="detailed-text">{result.detailed_explanation}</p>
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+        <div class="detailed-text markdown-body">{@html detailedExplanationHtml}</div>
       </section>
     {/if}
 
@@ -394,6 +402,52 @@
     line-height: 1.6;
     color: var(--text-secondary);
     margin: 0;
+  }
+
+  .markdown-body :global(p) {
+    margin: 0 0 var(--spacing-sm);
+  }
+
+  .markdown-body :global(ul),
+  .markdown-body :global(ol) {
+    margin: 0 0 var(--spacing-sm);
+    padding-left: 1.2rem;
+  }
+
+  .markdown-body :global(li) {
+    margin: 0.2rem 0;
+  }
+
+  .markdown-body :global(code) {
+    font-family: 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+    font-size: 0.9em;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+  }
+
+  .markdown-body :global(pre) {
+    background: rgba(0, 0, 0, 0.25);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+  }
+
+  .markdown-body :global(pre code) {
+    background: transparent;
+    padding: 0;
+  }
+
+  .markdown-body :global(blockquote) {
+    margin: 0 0 var(--spacing-sm);
+    padding: 0.4rem 0.8rem;
+    border-left: 3px solid var(--primary-color);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .markdown-body :global(a) {
+    color: var(--primary-color);
+    text-decoration: underline;
   }
 
   /* Examples & Usage */
