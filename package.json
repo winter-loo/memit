@@ -16,7 +16,8 @@
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {
-    "pre-commit": "npx lint-staged && pnpm check && pnpm build && pnpm fmt"
+    "pre-commit": "npx lint-staged && pnpm check && pnpm build",
+    "post-commit": "pnpm fmt && if ! git diff --quiet; then git add -A && SKIP_SIMPLE_GIT_HOOKS=1 git commit --amend --no-edit; fi"
   },
   "lint-staged": {
     "*.{js,ts,svelte,json,md,html,css}": [
