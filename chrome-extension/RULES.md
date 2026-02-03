@@ -1,0 +1,3 @@
+- **Verification**: Mandatory health checks using pnpm build, pnpm lint, pnpm check, and pnpm fmt.
+- **Documentation**: Required developer docs for significant refactors or bug fixes in the doc/developer folder.
+- **Code Quality**: Emphasis on detailed comments for non-obvious logic and maintaining consistency.

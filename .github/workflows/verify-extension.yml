@@ -3,8 +3,12 @@ name: Verify Project
 on:
   push:
     branches: [main]
+    paths:
+      - "chrome-extension/**"
   pull_request:
     branches: [main]
+    paths:
+      - "chrome-extension/**"
 
 jobs:
   verify:
@@ -18,17 +22,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
+          cache-dependency-path: chrome-extension/pnpm-lock.yaml
 
       - name: Install dependencies
+        working-directory: chrome-extension
         run: pnpm install
 
       - name: Lint
+        working-directory: chrome-extension
         run: pnpm lint
 
       - name: Test
+        working-directory: chrome-extension
         run: pnpm test run
 
       - name: Build
+        working-directory: chrome-extension
         run: pnpm build

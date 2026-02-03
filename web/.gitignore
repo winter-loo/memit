@@ -1,0 +1,34 @@
+# Dependency directories
+node_modules/
+
+# SvelteKit and build outputs
+/.svelte-kit/
+/dist/
+/build/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.dev
+!.env.prod
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+.vercel
+.netlify
