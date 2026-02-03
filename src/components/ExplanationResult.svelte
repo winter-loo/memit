@@ -12,8 +12,8 @@
     MoveRight,
     Quote,
     TriangleAlert,
-    Volume2,
   } from '@lucide/svelte';
+  import AudioLines from './icons/AudioLines.svelte';
 
   interface Props {
     result: DictionaryResponse;
@@ -41,6 +41,28 @@
     const rawHtml = marked.parse(result.detailed_explanation ?? '', { breaks: true }) as string;
     return DOMPurify.sanitize(rawHtml);
   });
+
+  let ttsState = $state<'idle' | 'loading' | 'speaking'>('idle');
+
+  function speak() {
+    if (ttsState !== 'idle') return;
+    ttsState = 'loading';
+    chrome.runtime.sendMessage({ type: 'SPEAK_TEXT', text: result.word });
+  }
+
+  $effect(() => {
+    const listener = (message: { type: string; status: string }) => {
+      if (message.type === 'TTS_EVENT') {
+        if (message.status === 'start') {
+          ttsState = 'speaking';
+        } else if (['end', 'interrupted', 'cancelled', 'error'].includes(message.status)) {
+          ttsState = 'idle';
+        }
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => chrome.runtime.onMessage.removeListener(listener);
+  });
 </script>
 
 <div class="explanation-container">
@@ -53,8 +75,14 @@
       {#if displayIPA}
         <p class="ipa">{displayIPA}</p>
       {/if}
-      <button class="icon-btn-small" title="Listen">
-        <Volume2 size={18} />
+      <button
+        class="icon-btn-small"
+        class:loading={ttsState === 'loading'}
+        class:speaking={ttsState === 'speaking'}
+        title="Listen"
+        onclick={speak}
+      >
+        <AudioLines size={18} isAnimating={ttsState !== 'idle'} />
       </button>
     </div>
   </header>
@@ -246,11 +274,25 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: color var(--transition-fast);
+    transition:
+      color var(--transition-fast),
+      transform var(--transition-fast);
   }
 
   .icon-btn-small:hover {
     color: var(--primary-color);
+    transform: scale(1.1);
+  }
+
+  .icon-btn-small.loading {
+    /* Loading: Animate (via prop) but keep default color */
+    color: var(--text-muted);
+    opacity: 0.8;
+  }
+
+  .icon-btn-small.speaking {
+    color: var(--primary-color);
+    /* Speaking: Animate (via prop) AND colorize */
   }
 
   /* Simple Def Card */

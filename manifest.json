@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Memit",
   "version": "1.0.0",
-  "permissions": ["contextMenus", "storage", "activeTab", "scripting"],
+  "permissions": ["contextMenus", "storage", "activeTab", "scripting", "tts"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true

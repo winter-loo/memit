@@ -111,5 +111,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((noteId) => sendResponse({ success: true, noteId }))
       .catch((error) => sendResponse({ error: error.message }));
     return true;
+  } else if (message.type === 'SPEAK_TEXT') {
+    chrome.tts.getVoices((voices) => {
+      // Find a natural-sounding Google voice if possible, otherwise any English voice
+      const preferredVoice =
+        voices.find(
+          (v) => v.voiceName && v.voiceName.includes('Google') && v.lang && v.lang.startsWith('en')
+        ) || voices.find((v) => v.lang && v.lang.startsWith('en'));
+
+      const options: chrome.tts.TtsOptions = {
+        voiceName: preferredVoice?.voiceName,
+        lang: 'en-US',
+        rate: 1.0,
+        onEvent: (event: chrome.tts.TtsEvent) => {
+          if (sender.tab?.id) {
+            chrome.tabs
+              .sendMessage(sender.tab.id, {
+                type: 'TTS_EVENT',
+                status: event.type,
+              })
+              .catch(() => {
+                // Ignore errors if tab is closed/unreachable
+              });
+          }
+        },
+      };
+
+      chrome.tts.speak(message.text, options);
+      sendResponse({ success: true });
+    });
+    return true;
   }
 });
