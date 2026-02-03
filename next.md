@@ -20,3 +20,6 @@
 
 - Image generation. When it worths explaining the text with an engaging image, then generate an image for it.
   For example, the image for text: `racking up a massive bill`: ![racking up a massive bill](./racking_up_a_massive_bill.jpeg)
+
+- Add word games, ideas coming from https://dictionary.cambridge.org/us/plus/wordlist/13_words-for-describing-things/gapfill
+- Add Quiz and pass quizes to get scores
