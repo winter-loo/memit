@@ -37,7 +37,7 @@
       : result.ipa_pronunciation
   );
 
-  const detailedExplanationHtml = $derived(() => {
+  const detailedExplanationHtml = $derived.by(() => {
     const rawHtml = marked.parse(result.detailed_explanation ?? '', { breaks: true }) as string;
     return DOMPurify.sanitize(rawHtml);
   });
