@@ -3,10 +3,14 @@ name: Deploy UI (Cloudflare Pages)
 on:
   push:
     branches: [main]
+    tags: ["v*"]
     paths:
       - "web/**"
       - ".github/workflows/deploy-ui.yml"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-deploy:
