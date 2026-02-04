@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #FF6B00;
+  --color-primary: #ff6b00;
   --color-primary-dark: #e65a00;
-  --color-background-light: #FFFFFF;
-  --color-background-dark: #0F1419;
-  --color-card-light: #F7F9F9;
-  --color-card-dark: #16181C;
+  --color-background-light: #ffffff;
+  --color-background-dark: #0f1419;
+  --color-card-light: #f7f9f9;
+  --color-card-dark: #16181c;
 
   --font-display: Inter, sans-serif;
-  
+
   --radius-DEFAULT: 12px;
 }
 
