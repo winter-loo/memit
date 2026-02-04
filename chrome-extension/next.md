@@ -23,3 +23,5 @@
 
 - Add word games, ideas coming from https://dictionary.cambridge.org/us/plus/wordlist/13_words-for-describing-things/gapfill
 - Add Quiz and pass quizes to get scores
+
+- speed reading by [RSVP format](https://github.com/thomaskolmans/rsvp-reading)
