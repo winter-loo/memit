@@ -1,10 +1,11 @@
 <script>
-	export let title = '';
-	export let path = '';
-	export let size = 20;
-	// Use hex without #, or pass full CSS color
-	export let color = 'currentColor';
-	export let viewBox = '0 0 24 24';
+	let {
+		title = '',
+		path = '',
+		size = 20,
+		color = 'currentColor',
+		viewBox = '0 0 24 24'
+	} = $props();
 </script>
 
 <svg

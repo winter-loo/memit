@@ -12,31 +12,29 @@
 		Volume2,
 		Trash2
 	} from '@lucide/svelte';
+	import { onMount } from 'svelte';
 
 	/** @typedef {{ id: string | number, fields?: string[] }} Note */
 	/** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string }} ExplainResult */
 
-	/** @type {import('@supabase/supabase-js').User | null} */
-	export let user = null;
-	/** @type {import('@supabase/supabase-js').SupabaseClient | null} */
-	export let supabase = null;
+	let { user = null, supabase = null } = $props();
 
 	/** @type {Note[]} */
-	let notes = [];
-	let loadingNotes = true;
-	let notesError = '';
+	let notes = $state([]);
+	let loadingNotes = $state(true);
+	let notesError = $state('');
 
 	// daily total
-	let dailyStudied = 0;
+	let dailyStudied = $state(0);
 	const dailyGoal = 20;
-	let dailyError = '';
+	let dailyError = $state('');
 
 	// explain
-	let explainText = '';
-	let explainLoading = false;
-	let explainError = '';
+	let explainText = $state('');
+	let explainLoading = $state(false);
+	let explainError = $state('');
 	/** @type {ExplainResult | null} */
-	let explainResult = null;
+	let explainResult = $state(null);
 
 	/** @param {unknown} e */
 	function toErrorMessage(e) {
@@ -179,8 +177,6 @@
 		}
 	}
 
-	// initial load
-	import { onMount } from 'svelte';
 	onMount(() => {
 		loadNotes();
 		loadDailyTotal();
@@ -252,7 +248,7 @@
 				<button
 					class="text-slate-400 hover:text-red-500 transition-colors"
 					title="Sign out"
-					on:click={handleSignOut}
+					onclick={handleSignOut}
 					aria-label="Sign out"
 				>
 					<LogOut size={18} />
@@ -274,7 +270,7 @@
 					</div>
 					<span class="font-bold text-lg">memit</span>
 				</div>
-				<button class="text-slate-600" on:click={handleSignOut} aria-label="Sign out">
+				<button class="text-slate-600" onclick={handleSignOut} aria-label="Sign out">
 					<LogOut size={18} />
 				</button>
 			</div>
@@ -300,7 +296,7 @@
 				<div class="flex items-center justify-end pt-3 mt-1">
 					<button
 						class="bg-primary text-white px-6 py-2 rounded-full font-bold hover:bg-primary-dark transition-colors shadow-sm shadow-primary/20 disabled:opacity-50"
-						on:click={explainWord}
+						onclick={explainWord}
 						disabled={explainLoading || !explainText.trim()}
 					>
 						{#if explainLoading}Explaining…{:else}explain{/if}
@@ -329,7 +325,7 @@
 							</div>
 							<button
 								class="text-xs bg-primary/10 text-primary font-bold px-3 py-2 rounded-full hover:bg-primary/15"
-								on:click={addExplainedNote}
+								onclick={addExplainedNote}
 								title="Add to your deck"
 							>
 								Add
@@ -377,7 +373,7 @@
 					<div class="text-xs whitespace-pre-wrap">{notesError}</div>
 					<button
 						class="mt-3 px-4 py-2 rounded-full bg-primary text-white font-bold"
-						on:click={loadNotes}>Retry</button
+						onclick={loadNotes}>Retry</button
 					>
 				</div>
 			{:else if notes.length === 0}
@@ -406,7 +402,10 @@
 									class="text-slate-400 hover:text-red-500"
 									aria-label="Delete"
 									title="Delete"
-									on:click|stopPropagation={() => deleteNote(note.id)}><Trash2 size={18} /></button
+									onclick={(e) => {
+										e.stopPropagation();
+										deleteNote(note.id);
+									}}><Trash2 size={18} /></button
 								>
 							</div>
 						</div>

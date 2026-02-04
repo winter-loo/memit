@@ -5,12 +5,12 @@
 	import Auth from '../components/Auth.svelte';
 	import Home from '../components/Home.svelte';
 
-	let loading = true;
+	let loading = $state(true);
 	/** @type {import('@supabase/supabase-js').Session | null} */
-	let session = null;
-	/** @type {import('@supabase/supabase-js').SupabaseClient} */
-	let supabase;
-	let errorMsg = '';
+	let session = $state(null);
+	/** @type {import('@supabase/supabase-js').SupabaseClient | any} */
+	let supabase = $state();
+	let errorMsg = $state('');
 
 	/** @param {unknown} e */
 	function toErrorMessage(e) {
@@ -26,7 +26,7 @@
 			session = data.session;
 
 			// Listen for auth changes
-			supabase.auth.onAuthStateChange((_event, _session) => {
+			supabase.auth.onAuthStateChange(/** @param {any} _event @param {any} _session */ (_event, _session) => {
 				session = _session;
 			});
 

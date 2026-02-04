@@ -3,17 +3,14 @@
 	import { siWechat, siApple } from 'simple-icons/icons';
 	import BrandIcon from './BrandIcon.svelte';
 
-	/** @type {import('@supabase/supabase-js').SupabaseClient | null} */
-	export let supabase = null;
-	/** @type {() => void} */
-	export let onAuthSuccess = () => {};
+	let { supabase = null, onAuthSuccess = () => {} } = $props();
 
-	let email = '';
-	let password = '';
-	let showPassword = false;
-	let errorMsg = '';
-	let loading = false;
-	let view = 'login'; // login, signup, forgot
+	let email = $state('');
+	let password = $state('');
+	let showPassword = $state(false);
+	let errorMsg = $state('');
+	let loading = $state(false);
+	let view = $state('login'); // login, signup, forgot
 
 	async function handleLogin() {
 		if (!supabase) return;
@@ -101,17 +98,17 @@
 					{#if view === 'login'}
 						Don't have an account? <button
 							class="text-slate-900 dark:text-white font-medium hover:underline underline-offset-4"
-							on:click={() => (view = 'signup')}>Sign up</button
+							onclick={() => (view = 'signup')}>Sign up</button
 						>.
 					{:else if view === 'signup'}
 						Already have an account? <button
 							class="text-slate-900 dark:text-white font-medium hover:underline underline-offset-4"
-							on:click={() => (view = 'login')}>Log in</button
+							onclick={() => (view = 'login')}>Log in</button
 						>.
 					{:else}
 						Remembered it? <button
 							class="text-slate-900 dark:text-white font-medium hover:underline underline-offset-4"
-							on:click={() => (view = 'login')}>Log in</button
+							onclick={() => (view = 'login')}>Log in</button
 						>.
 					{/if}
 				</p>
@@ -123,7 +120,7 @@
 			<div class="grid grid-cols-3 gap-3">
 				<button
 					aria-label="Continue with Google"
-					on:click={() => handleSocial('google')}
+					onclick={() => handleSocial('google')}
 					class="flex items-center justify-center py-2.5 px-4 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 shadow-sm"
 				>
 					<svg class="w-5 h-5" viewBox="0 0 24 24"
@@ -170,7 +167,8 @@
 		<!-- Form -->
 		<form
 			class="space-y-6"
-			on:submit|preventDefault={() => {
+			onsubmit={(e) => {
+				e.preventDefault();
 				if (view === 'login') handleLogin();
 				else if (view === 'signup') handleSignup();
 				else handleForgot();
@@ -206,7 +204,7 @@
 							<button
 								type="button"
 								class="text-xs font-medium text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-								on:click={() => (view = 'forgot')}>Forgot password?</button
+								onclick={() => (view = 'forgot')}>Forgot password?</button
 							>
 						{/if}
 					</div>
@@ -222,7 +220,7 @@
 						<button
 							type="button"
 							class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-							on:click={() => (showPassword = !showPassword)}
+							onclick={() => (showPassword = !showPassword)}
 						>
 							{#if showPassword}
 								<EyeOff size={18} />
