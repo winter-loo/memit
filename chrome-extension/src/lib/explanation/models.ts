@@ -20,9 +20,6 @@ export const MODEL_GROUPS: ModelGroup[] = [
     label: 'OpenRouter',
     models: [
       { id: 'openrouter:openrouter/free', name: 'OpenRouter Free (Auto)' },
-      { id: 'openrouter:google/gemini-2.0-flash-lite-preview-02-05:free', name: 'Gemini 2.0 Flash Lite (free)' },
-      { id: 'openrouter:deepseek/deepseek-r1:free', name: 'DeepSeek R1 (free)' },
-      { id: 'openrouter:mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small 24B (free)' },
       { id: 'openrouter:openai/gpt-oss-120b', name: 'GPT OSS 120B' },
       { id: 'openrouter:google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
       { id: 'openrouter:google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
