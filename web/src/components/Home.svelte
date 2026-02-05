@@ -62,6 +62,9 @@
     if (!token) throw new Error('Not signed in');
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', 'Bearer ' + token);
+    if (user?.id) {
+      headers.set('X-User-Id', String(user.id));
+    }
     const res = await fetch(apiUrl(path), { ...options, headers });
     if (!res.ok) {
       const t = await res.text().catch(() => '');

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "cp .env.dev .env && vite build --mode development",
+    "dev": "cp .env.dev .env && vite dev",
     "build": "cp .env.prod .env && vite build --mode production",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",

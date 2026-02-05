@@ -1,6 +1,6 @@
 <script>
   import { BookOpen, Eye, EyeOff } from '@lucide/svelte';
-  import { siWechat, siApple } from 'simple-icons/icons';
+  import { siWechat, siApple } from 'simple-icons';
   import BrandIcon from './BrandIcon.svelte';
 
   let { supabase = null, onAuthSuccess = () => {} } = $props();
