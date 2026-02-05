@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MODEL_GROUPS } from './lib/explanation/models';
-  import { Check, Languages } from '@lucide/svelte';
+  import { Check, Languages, Loader2, XCircle } from '@lucide/svelte';
+  import { AnkiClient } from './lib/anki/client';
 
   interface Settings {
     ankiAutoSave: boolean;
@@ -10,6 +11,7 @@
     modelId: string;
     openRouterApiKey: string;
     geminiApiKey: string;
+    ankiBackendUrl: string;
     responseTimeout: number;
   }
 
@@ -20,10 +22,15 @@
     modelId: 'memcool:gemini-2.5-flash-lite',
     openRouterApiKey: '',
     geminiApiKey: '',
+    ankiBackendUrl: 'https://memit.ldd.cool',
     responseTimeout: 5,
   });
 
   let saved = $state(false);
+  let testingAuth = $state(false);
+  let authStatus = $state<{ ok: boolean; message: string } | null>(null);
+
+  const anki = new AnkiClient();
 
   onMount(() => {
     chrome.storage.sync.get(
@@ -34,6 +41,7 @@
         'modelId',
         'openRouterApiKey',
         'geminiApiKey',
+        'ankiBackendUrl',
         'responseTimeout',
       ],
       (result: Partial<Settings>) => {
@@ -43,6 +51,7 @@
         settings.modelId = result.modelId ?? 'memcool:gemini-2.5-flash-lite';
         settings.openRouterApiKey = result.openRouterApiKey ?? '';
         settings.geminiApiKey = result.geminiApiKey ?? '';
+        settings.ankiBackendUrl = result.ankiBackendUrl ?? 'https://memit.ldd.cool';
         settings.responseTimeout = result.responseTimeout ?? 5;
       }
     );
@@ -57,6 +66,7 @@
         if (changes.openRouterApiKey)
           settings.openRouterApiKey = changes.openRouterApiKey.newValue as string;
         if (changes.geminiApiKey) settings.geminiApiKey = changes.geminiApiKey.newValue as string;
+        if (changes.ankiBackendUrl) settings.ankiBackendUrl = changes.ankiBackendUrl.newValue as string;
         if (changes.responseTimeout)
           settings.responseTimeout = changes.responseTimeout.newValue as number;
       }
@@ -72,6 +82,29 @@
     setTimeout(() => {
       saved = false;
     }, 2000);
+  }
+
+  async function testAuth() {
+    testingAuth = true;
+    authStatus = null;
+    anki.setBaseUrl(settings.ankiBackendUrl);
+
+    try {
+      const result = await chrome.storage.local.get(['ankiAuthToken']);
+      const token = result.ankiAuthToken;
+
+      if (!token) {
+        authStatus = { ok: false, message: 'No local token found. Please sign in.' };
+        return;
+      }
+
+      const info = await anki.whoami(token);
+      authStatus = { ok: true, message: `Connected as ${info.user_id}` };
+    } catch (e: any) {
+      authStatus = { ok: false, message: e?.message || 'Connection failed' };
+    } finally {
+      testingAuth = false;
+    }
   }
 
   $effect(() => {
@@ -152,6 +185,38 @@
           />
         </div>
       </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <label for="anki-backend-url">Backend Service URL</label>
+          <p class="description">The URL of your anki-service (e.g., <a href="https://memit.ldd.cool" target="_blank">https://memit.ldd.cool</a>).</p>
+        </div>
+        <div class="setting-action">
+          <input
+            type="text"
+            id="anki-backend-url"
+            bind:value={settings.ankiBackendUrl}
+            placeholder="https://memit.ldd.cool"
+          />
+          <button class="test-btn" onclick={testAuth} disabled={testingAuth}>
+            {#if testingAuth}
+              <Loader2 size={16} class="spinner" />
+              Checking...
+            {:else}
+              Test Auth
+            {/if}
+          </button>
+        </div>
+      </div>
+
+      {#if authStatus}
+        <div class="status-msg {authStatus.ok ? 'success' : 'error'}">
+          {#if !authStatus.ok}
+            <XCircle size={14} />
+          {/if}
+          {authStatus.message}
+        </div>
+      {/if}
 
       <div class="setting-item">
         <div class="setting-info">
@@ -324,6 +389,70 @@
     color: var(--text-secondary);
     margin: 0;
     line-height: 1.5;
+  }
+
+  .setting-action {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .test-btn {
+    background: var(--card-bg);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all var(--transition-fast);
+  }
+
+  .test-btn:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  .test-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .status-msg {
+    margin-top: -1.5rem;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .status-msg.success {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .status-msg.error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  :global(.spinner) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   select {

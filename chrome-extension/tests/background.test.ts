@@ -78,6 +78,7 @@ describe('Background Script', () => {
     // Mock the explainer
     vi.mock('../src/lib/explanation/providers/memcool', () => ({
       MemCoolExplainer: class {
+        setBaseUrl = vi.fn();
         explain = vi.fn().mockResolvedValue({ word: 'eschew', in_chinese: '避开' });
       },
     }));
@@ -96,6 +97,8 @@ describe('Background Script', () => {
     // Mock AnkiClient
     vi.mock('../src/lib/anki/client', () => ({
       AnkiClient: class {
+        setBaseUrl = vi.fn();
+        whoami = vi.fn().mockResolvedValue({ user_id: 'u', collection_id: 'default' });
         addNote = vi.fn().mockResolvedValue(12345);
       },
     }));

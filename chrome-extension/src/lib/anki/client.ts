@@ -1,11 +1,41 @@
 export class AnkiClient {
-  private apiUrl = 'https://mem.ldd.cool/api/note/add';
+  private baseUrl = 'https://memit.ldd.cool';
 
-  async addNote(front: string, back: string): Promise<number> {
-    const response = await fetch(this.apiUrl, {
+  setBaseUrl(url: string) {
+    this.baseUrl = url.replace(/\/$/, '');
+  }
+
+  private get addNoteUrl() {
+    return `${this.baseUrl}/api/note/add`;
+  }
+
+  private get whoamiUrl() {
+    return `${this.baseUrl}/api/auth/whoami`;
+  }
+
+  async whoami(token: string): Promise<{ user_id: string; collection_id: string; auth_mode: string; jwt_alg: string }> {
+    const response = await fetch(this.whoamiUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Auth Error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  async addNote(front: string, back: string, token: string): Promise<number> {
+    const response = await fetch(this.addNoteUrl, {
       method: 'POST',
       body: JSON.stringify({ fields: [front, back] }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (!response.ok) {

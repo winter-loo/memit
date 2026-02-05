@@ -3,10 +3,14 @@ import type { ContentExplainer, DictionaryResponse } from '../types';
 export class MemCoolExplainer implements ContentExplainer {
   id = 'memcool';
   name = 'Mem.Cool';
-  private baseUrl = 'https://mem.ldd.cool/explain';
+  private baseUrl = 'https://memit.ldd.cool';
+
+  setBaseUrl(url: string) {
+    this.baseUrl = url.replace(/\/$/, '');
+  }
 
   async explain(text: string, options?: { modelId?: string }): Promise<DictionaryResponse> {
-    let url = `${this.baseUrl}/${encodeURIComponent(text)}`;
+    let url = `${this.baseUrl}/explain/${encodeURIComponent(text)}`;
     if (options?.modelId) {
       url += `?model=${encodeURIComponent(options.modelId)}`;
     }

@@ -26,7 +26,7 @@ describe('MemCoolExplainer', () => {
 
     expect(result.word).toBe('test');
     expect(result.in_chinese).toBe('测试');
-    expect(fetch).toHaveBeenCalledWith('https://mem.ldd.cool/explain/test');
+    expect(fetch).toHaveBeenCalledWith('https://memstore.ldd.cool/explain/test');
   });
 
   it('should handle URL encoding', async () => {
@@ -37,7 +37,7 @@ describe('MemCoolExplainer', () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
     await explainer.explain('hello world');
-    expect(fetch).toHaveBeenCalledWith('https://mem.ldd.cool/explain/hello%20world');
+    expect(fetch).toHaveBeenCalledWith('https://memstore.ldd.cool/explain/hello%20world');
   });
 
   it('should handle errors with message in body', async () => {
@@ -72,6 +72,6 @@ describe('MemCoolExplainer', () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
     await explainer.explain('test', { modelId: 'gemini-1.5-pro' });
-    expect(fetch).toHaveBeenCalledWith('https://mem.ldd.cool/explain/test?model=gemini-1.5-pro');
+    expect(fetch).toHaveBeenCalledWith('https://memstore.ldd.cool/explain/test?model=gemini-1.5-pro');
   });
 });

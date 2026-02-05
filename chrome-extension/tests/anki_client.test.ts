@@ -15,15 +15,18 @@ describe('AnkiClient', () => {
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
-    const noteId = await client.addNote('Front', 'Back');
+    const noteId = await client.addNote('Front', 'Back', 'test-token');
 
     expect(noteId).toBe(12345);
     expect(fetch).toHaveBeenCalledWith(
-      'https://mem.ldd.cool/api/note/add',
+      'https://memstore.ldd.cool/api/note/add',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ fields: ['Front', 'Back'] }),
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-token',
+        },
       })
     );
   });
@@ -37,6 +40,6 @@ describe('AnkiClient', () => {
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
-    await expect(client.addNote('Front', 'Back')).rejects.toThrow('Database connection failed');
+    await expect(client.addNote('Front', 'Back', 'test-token')).rejects.toThrow('Database connection failed');
   });
 });
