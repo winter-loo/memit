@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cp .env.dev .env && vite dev",
+    "dev:build": "cp .env.dev .env && vite build --mode development",
     "build": "cp .env.prod .env && vite build --mode production",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
@@ -16,14 +17,15 @@
   "dependencies": {
     "@lucide/svelte": "^0.563.1",
     "@supabase/supabase-js": "^2.93.3",
-    "simple-icons": "^16.7.0"
+    "@sveltejs/kit": "2.50.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "simple-icons": "^16.7.0",
+    "vite": "7.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@sveltejs/adapter-auto": "^7.0.0",
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.50.1",
-    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
@@ -38,7 +40,6 @@
     "svelte": "^5.48.2",
     "svelte-check": "^4.3.5",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "typescript": "^5.9.3"
   }
 }

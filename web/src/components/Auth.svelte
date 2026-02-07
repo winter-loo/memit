@@ -247,19 +247,19 @@
     <!-- Terms Footer -->
     <p class="text-center text-[10px] text-slate-400 leading-relaxed max-w-[280px] mx-auto">
       By signing in, you agree to our
-      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+      <!-- eslint-disable svelte/no-navigation-without-resolve -->
       <a
         href="/terms"
         class="text-slate-500 underline underline-offset-2 hover:text-slate-900 dark:hover:text-white"
         >Terms of Service</a
       >
       and
-      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
       <a
         href="/privacy"
         class="text-slate-500 underline underline-offset-2 hover:text-slate-900 dark:hover:text-white"
         >Privacy Policy</a
       >.
+      <!-- eslint-enable svelte/no-navigation-without-resolve -->
     </p>
   </div>
 </div>
