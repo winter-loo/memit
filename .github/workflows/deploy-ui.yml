@@ -37,11 +37,7 @@ jobs:
 
       - name: Build UI
         working-directory: web
-        run: pnpm run build
-        env:
-          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
-          PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          PUBLIC_API_BASE_URL: https://mem.ldd.cool
+        run: pnpm build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
