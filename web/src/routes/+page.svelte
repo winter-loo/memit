@@ -61,7 +61,21 @@
         const data = await res.json();
         const loadedNotes = Array.isArray(data) ? data : [];
         // Sort by id descending (assuming id is timestamp) to show newest first
-        notes = loadedNotes.sort((a, b) => Number(b.id) - Number(a.id));
+        notes = loadedNotes
+          .sort((a, b) => Number(b.id) - Number(a.id))
+          .map((n) => {
+            const rawBack = n.fields?.[1] || '';
+            let parsed = {};
+            try {
+              parsed = JSON.parse(rawBack);
+            } catch {
+              // fallback if not json
+            }
+            return {
+              ...n,
+              _parsed: parsed
+            };
+          });
       }
     } catch (e) {
       console.error(e);
@@ -216,12 +230,12 @@
             <div onmousedown={handleMouseDown} onclick={() => handleCardClick(note)}>
               <WordCard
                 word={{
-                  text: note.fields?.[0],
+                  text: note.fields?.[0] || 'Unknown',
                   addedTime: 'Just now',
-                  definition: note.fields?.[1],
-                  translation: note.fields?.[2] || '',
-                  pos: note.fields?.[3] || '',
-                  ipa: note.fields?.[4] || ''
+                  definition: note._parsed?.definition || note.fields?.[1] || '...',
+                  translation: note._parsed?.translation || '',
+                  pos: note._parsed?.pos || '',
+                  ipa: note._parsed?.ipa || ''
                 }}
                 onDelete={() => deleteNote(note.id)}
               />

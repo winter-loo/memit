@@ -25,6 +25,22 @@
     if (!note?.fields?.[0]) return;
     const word = note.fields[0];
 
+    // Check if we have pre-parsed JSON in note._parsed
+    // (This comes from the list page loading logic or similar)
+    if (note._parsed && Object.keys(note._parsed).length > 0) {
+      details = {
+        ...note._parsed,
+        word,
+        // map legacy field names if necessary, or assume extension saves consistent schema
+        in_chinese: note._parsed.translation || note._parsed.in_chinese,
+        simple_definition: note._parsed.definition || note._parsed.simple_definition,
+        ipa_pronunciation: note._parsed.ipa || note._parsed.ipa_pronunciation
+      };
+      loading = false;
+      return;
+    }
+
+    // Fallback to cache or live fetch if note._parsed is missing (legacy notes or direct link)
     if (wordDetailsCache.has(word)) {
       details = wordDetailsCache.get(word);
       loading = false;
@@ -33,6 +49,26 @@
 
     loading = true;
     try {
+      // Try to parse fields[1] first if it looks like JSON
+      try {
+        const rawBack = note.fields?.[1] || '';
+        if (rawBack.trim().startsWith('{')) {
+          const parsed = JSON.parse(rawBack);
+          details = {
+            ...parsed,
+            word,
+            in_chinese: parsed.translation || parsed.in_chinese,
+            simple_definition: parsed.definition || parsed.simple_definition,
+            ipa_pronunciation: parsed.ipa || parsed.ipa_pronunciation
+          };
+          wordDetailsCache.set(word, details);
+          loading = false;
+          return;
+        }
+      } catch (e) {
+        // ignore parse error, fallback to API
+      }
+
       const res = await fetch(apiUrl(`/explain/${encodeURIComponent(word)}`));
       if (!res.ok) throw new Error('Failed to fetch details');
       details = await res.json();
