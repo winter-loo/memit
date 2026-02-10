@@ -192,14 +192,63 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'ankiAuthPendingTabId',
       ]);
 
-      // Broadcast login success to all active tabs so they can update UI or retry saving
-      chrome.tabs.query({}, (tabs) => {
-        for (const tab of tabs) {
-          if (tab.id) {
-            chrome.tabs.sendMessage(tab.id, { type: 'ANKI_LOGIN_SUCCESS' }).catch(() => {
-              // ignore errors for inactive/closed tabs
-            });
+      type PendingSave = { word: string; explanation: unknown };
+      const isPendingSave = (v: unknown): v is PendingSave => {
+        if (!v || typeof v !== 'object') return false;
+        const obj = v as Record<string, unknown>;
+        return typeof obj.word === 'string' && 'explanation' in obj;
+      };
+
+      // Check for pending save request
+      chrome.storage.local.get(['pendingSave'], async (result: { pendingSave?: unknown }) => {
+        const pendingRaw = result.pendingSave;
+        if (isPendingSave(pendingRaw)) {
+          const pending = pendingRaw;
+          try {
+            // Re-construct the save request locally
+            const rawJson = JSON.stringify(pending.explanation);
+
+            chrome.storage.sync.get(
+              ['ankiBackendUrl'],
+              async (syncResult: { ankiBackendUrl?: string }) => {
+                const ankiBackendUrl = syncResult.ankiBackendUrl || DEFAULT_MEMSTORE_URL;
+                anki.setBaseUrl(ankiBackendUrl);
+
+                // Validate token first
+                await anki.whoami(token);
+                const noteId = await anki.addNote(pending.word, rawJson, token);
+
+                // Broadcast success to all tabs (original tab picks this up)
+                chrome.tabs.query({}, (tabs) => {
+                  for (const tab of tabs) {
+                    if (tab.id) {
+                      chrome.tabs
+                        .sendMessage(tab.id, {
+                          type: 'ANKI_SAVE_SUCCESS',
+                          noteId,
+                        })
+                        .catch(() => {});
+                    }
+                  }
+                });
+
+                // Clear pending save
+                chrome.storage.local.remove(['pendingSave']);
+              }
+            );
+          } catch (e) {
+            console.error('Failed to execute pending save:', e);
+            // Optionally broadcast failure
           }
+        } else {
+          // If no pending save, just broadcast login success (legacy behavior)
+          chrome.tabs.query({}, (tabs) => {
+            for (const tab of tabs) {
+              if (tab.id) {
+                chrome.tabs.sendMessage(tab.id, { type: 'ANKI_LOGIN_SUCCESS' }).catch(() => {});
+              }
+            }
+          });
         }
       });
 
@@ -231,10 +280,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const hasPrimary = primaryToken.length > 0;
             const hasFallback = fallbackToken.length > 0;
             if (!hasPrimary && !hasFallback) {
+              // Store pending save request before opening login
+              chrome.storage.local.set({
+                pendingSave: {
+                  word: message.word,
+                  explanation: message.explanation,
+                  timestamp: Date.now(),
+                },
+              });
+
               openLoginTab();
               sendResponse({
                 error:
-                  'Not signed in to Anki service. A sign-in tab has been opened; please sign in then try again.',
+                  'Not signed in to Anki service. A sign-in tab has been opened; saving will proceed automatically after login.',
                 needsLogin: true,
               });
               return;
@@ -340,14 +398,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           deckName: note.deckName || 'Default',
           modelName: note.modelName || 'Basic',
           fields: note.fields,
-          tags: note.tags || []
-        }
-      }
+          tags: note.tags || [],
+        },
+      },
     };
 
     fetch('http://127.0.0.1:8765', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -357,8 +415,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true, result: data.result });
         }
       })
-      .catch((err) => {
-        sendResponse({ success: false, error: 'Could not connect to Anki. Is it running with AnkiConnect?' });
+      .catch(() => {
+        sendResponse({
+          success: false,
+          error: 'Could not connect to Anki. Is it running with AnkiConnect?',
+        });
       });
     return true;
   }

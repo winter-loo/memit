@@ -17,7 +17,7 @@
   import Auth from '../components/Auth.svelte';
   import ExtensionAuthHelp from '../components/ExtensionAuthHelp.svelte';
 
-  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean }} Note */
+	  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any> }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);

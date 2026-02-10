@@ -5,7 +5,7 @@
 
   let { note, onClose } = $props();
 
-  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, origins?: string, etymology?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
+  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
 
   /** @type {ExplainResult | null} */
   let details = $state(null);
@@ -32,10 +32,10 @@
         ...note._parsed,
         word,
         // map legacy field names if necessary, or assume extension saves consistent schema
-        in_chinese: note._parsed.translation || note._parsed.in_chinese,
-        simple_definition: note._parsed.definition || note._parsed.simple_definition,
-        ipa_pronunciation: note._parsed.ipa || note._parsed.ipa_pronunciation,
-        etymology: note._parsed.etymology || note._parsed.origins
+        in_chinese: note._parsed.in_chinese,
+        simple_definition: note._parsed.simple_definition,
+        ipa_pronunciation: note._parsed.ipa_pronunciation,
+        etymology: note._parsed.etymology
       };
       loading = false;
       return;
@@ -59,15 +59,15 @@
             ...parsed,
             word,
             in_chinese: parsed.translation || parsed.in_chinese,
-            simple_definition: parsed.definition || parsed.simple_definition,
-            ipa_pronunciation: parsed.ipa || parsed.ipa_pronunciation,
-            etymology: parsed.etymology || parsed.origins
+            simple_definition: parsed.simple_definition,
+            ipa_pronunciation: parsed.ipa_pronunciation,
+            etymology: parsed.etymology
           };
           wordDetailsCache.set(word, details);
           loading = false;
           return;
         }
-      } catch (e) {
+      } catch {
         // ignore parse error, fallback to API
       }
 
@@ -230,7 +230,7 @@
             >
           </div>
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed italic">
-            {details?.etymology || details?.origins || `Etymology information for ${note.fields?.[0]} not available.`}
+            {details?.etymology || `Etymology information for ${note.fields?.[0]} not available.`}
           </p>
         </div>
       </div>

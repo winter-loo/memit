@@ -55,40 +55,45 @@
   function exportToAnkiConnect() {
     if (exportState === 'loading') return;
     exportState = 'loading';
-    
+
     // Construct a simple note for AnkiConnect
     // Default model: "Basic", Fields: Front, Back
     // We'll put word on Front, and details on Back
     const note = {
-      deckName: "Default",
-      modelName: "Basic",
+      deckName: 'Default',
+      modelName: 'Basic',
       fields: {
-        "Front": result.word,
-        "Back": `
+        Front: result.word,
+        Back: `
           <strong>${result.simple_definition}</strong><br>
           ${result.in_chinese}<br><br>
           <em>${result.ipa_pronunciation || ''}</em><br><br>
           ${result.detailed_explanation ? marked.parse(result.detailed_explanation) : ''}
         `,
-        "tags": ["memit"]
-      }
+        tags: ['memit'],
+      },
     };
 
-    chrome.runtime.sendMessage({ 
-      type: 'EXPORT_TO_ANKI_CONNECT', 
-      note 
-    }, (response) => {
-      if (response && response.success) {
-        exportState = 'success';
-        setTimeout(() => exportState = 'idle', 2000);
-      } else {
-        exportState = 'error';
-        // You might want to show the error message in a toast
-        console.error('AnkiConnect error:', response?.error);
-        alert('Failed to export to Anki Desktop. Make sure Anki is running with AnkiConnect installed.');
-        setTimeout(() => exportState = 'idle', 3000);
+    chrome.runtime.sendMessage(
+      {
+        type: 'EXPORT_TO_ANKI_CONNECT',
+        note,
+      },
+      (response) => {
+        if (response && response.success) {
+          exportState = 'success';
+          setTimeout(() => (exportState = 'idle'), 2000);
+        } else {
+          exportState = 'error';
+          // You might want to show the error message in a toast
+          console.error('AnkiConnect error:', response?.error);
+          alert(
+            'Failed to export to Anki Desktop. Make sure Anki is running with AnkiConnect installed.'
+          );
+          setTimeout(() => (exportState = 'idle'), 3000);
+        }
       }
-    });
+    );
   }
 
   $effect(() => {

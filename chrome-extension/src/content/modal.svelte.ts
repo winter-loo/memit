@@ -571,6 +571,11 @@ export function hideModal() {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'OPEN_MODAL') {
     openModal(message.text);
+  } else if (message.type === 'ANKI_SAVE_SUCCESS') {
+    console.log('Received ANKI_SAVE_SUCCESS (auto-saved after login)');
+    modalProps.isSaving = false;
+    modalProps.isSaved = true;
+    modalProps.saveError = '';
   } else if (message.type === 'ANKI_LOGIN_SUCCESS') {
     console.log('Received ANKI_LOGIN_SUCCESS');
     // If we had a save error related to auth, clear it and retry saving
