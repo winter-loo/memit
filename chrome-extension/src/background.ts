@@ -2,7 +2,6 @@ import { MemCoolExplainer } from './lib/explanation/providers/memcool';
 import { OpenRouterExplainer } from './lib/explanation/providers/openrouter';
 import { GeminiExplainer } from './lib/explanation/providers/gemini';
 import { AnkiClient } from './lib/anki/client';
-import { formatExplanationToHtml } from './lib/anki/formatter';
 import { countWords } from './lib/text-utils';
 
 const memcool = new MemCoolExplainer();
@@ -199,7 +198,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     return true;
   } else if (message.type === 'SAVE_TO_ANKI') {
-    const html = formatExplanationToHtml(message.explanation);
+    const rawJson = JSON.stringify(message.explanation);
 
     chrome.storage.sync.get(
       ['ankiBackendUrl', 'ankiAuthUrl'],
