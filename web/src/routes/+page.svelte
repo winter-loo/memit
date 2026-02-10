@@ -232,10 +232,10 @@
                 word={{
                   text: note.fields?.[0] || 'Unknown',
                   addedTime: 'Just now',
-                  definition: note._parsed?.definition || note.fields?.[1] || '...',
-                  translation: note._parsed?.translation || '',
-                  pos: note._parsed?.pos || '',
-                  ipa: note._parsed?.ipa || ''
+                  definition: note._parsed?.simple_definition || 'Processing...',
+                  translation: note._parsed?.in_chinese || '',
+                  pos: note._parsed?.part_of_speech || '',
+                  ipa: note._parsed?.ipa_pronunciation || ''
                 }}
                 onDelete={() => deleteNote(note.id)}
               />
