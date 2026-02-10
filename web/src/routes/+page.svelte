@@ -46,7 +46,9 @@
       });
       if (res.ok) {
         const data = await res.json();
-        notes = Array.isArray(data) ? data : [];
+        const loadedNotes = Array.isArray(data) ? data : [];
+        // Sort by id descending (assuming id is timestamp) to show newest first
+        notes = loadedNotes.sort((a, b) => Number(b.id) - Number(a.id));
       }
     } catch (e) {
       console.error(e);
