@@ -1,5 +1,9 @@
 <script>
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
+  import { resolve } from '$app/paths';
+  import { page } from '$app/stores';
   import {
     PUBLIC_API_BASE_URL,
     PUBLIC_SUPABASE_URL,
@@ -11,6 +15,7 @@
   import SkeletonCard from '../components/SkeletonCard.svelte';
   import WordDetail from '../components/WordDetail.svelte';
   import Auth from '../components/Auth.svelte';
+  import ExtensionAuthHelp from '../components/ExtensionAuthHelp.svelte';
 
   /** @typedef {{ id: string | number, fields?: string[], loading?: boolean }} Note */
 
@@ -28,6 +33,14 @@
   let clickStartTime = 0;
 
   const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
+
+  let isExtensionAuthFlow = $state(false);
+
+  let redirectSecondsRemaining = $state(8);
+
+  function goHomeNow() {
+    goto(resolve('/'), { replaceState: true });
+  }
 
   async function getAccessToken() {
     if (!supabase) return null;
@@ -116,6 +129,39 @@
     }
     loadingAuth = false;
   });
+
+  $effect(() => {
+    if (!browser) return;
+    const href = $page.url.href;
+    try {
+      const url = new URL(href);
+      isExtensionAuthFlow = url.searchParams.get('memit_ext_auth') === '1';
+    } catch {
+      isExtensionAuthFlow = false;
+    }
+  });
+
+  $effect(() => {
+    if (!session || !isExtensionAuthFlow) return;
+
+    const durationMs = 8000;
+    const endAt = Date.now() + durationMs;
+    redirectSecondsRemaining = Math.ceil(durationMs / 1000);
+
+    const interval = setInterval(() => {
+      const remainingMs = endAt - Date.now();
+      redirectSecondsRemaining = Math.max(0, Math.ceil(remainingMs / 1000));
+    }, 250);
+
+    const timeout = setTimeout(() => {
+      goto(resolve('/'), { replaceState: true });
+    }, durationMs);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  });
 </script>
 
 {#if loadingAuth}
@@ -126,6 +172,8 @@
   </div>
 {:else if !session}
   <Auth {supabase} />
+{:else if isExtensionAuthFlow}
+  <ExtensionAuthHelp secondsRemaining={redirectSecondsRemaining} onGoHome={goHomeNow} />
 {:else if selectedNote}
   <WordDetail note={selectedNote} onClose={() => (selectedNote = null)} />
 {:else}

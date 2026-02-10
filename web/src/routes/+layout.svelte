@@ -4,6 +4,7 @@
   import RightSidebar from '../components/RightSidebar.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
   import { createClient } from '@supabase/supabase-js';
 
@@ -17,6 +18,18 @@
 
   let isPractice = $derived($page.url.pathname.startsWith('/practice'));
   let isHome = $derived($page.url.pathname === '/');
+  let isExtensionAuthFlow = $state(false);
+
+  $effect(() => {
+    if (!browser) return;
+    const href = $page.url.href;
+    try {
+      const url = new URL(href);
+      isExtensionAuthFlow = url.searchParams.get('memit_ext_auth') === '1';
+    } catch {
+      isExtensionAuthFlow = false;
+    }
+  });
 
   onMount(async () => {
     supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
@@ -38,7 +51,7 @@
       class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"
     ></div>
   </div>
-{:else if !session || isPractice}
+{:else if !session || isPractice || isExtensionAuthFlow}
   {@render children()}
 {:else}
   <div class="max-w-7xl mx-auto flex min-h-screen">
@@ -58,10 +71,7 @@
     class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-t-2 border-slate-100 dark:border-slate-800 flex justify-around items-center py-3 px-4 z-50"
   >
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
-    <a
-      class={$page.url.pathname === '/' ? 'text-primary' : 'text-slate-400'}
-      href="/"
-    >
+    <a class={$page.url.pathname === '/' ? 'text-primary' : 'text-slate-400'} href="/">
       <span class="material-symbols-outlined text-3xl fill-1">home</span>
     </a>
     <a

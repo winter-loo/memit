@@ -12,6 +12,28 @@
   let loading = $state(false);
   let view = $state('login'); // login, signup, forgot
 
+  function isExtensionAuthFlow() {
+    try {
+      const url = new URL(window.location.href);
+      return url.searchParams.get('memit_ext_auth') === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function buildRedirectTo() {
+    const base = window.location.origin;
+    if (!isExtensionAuthFlow()) return base;
+
+    try {
+      const u = new URL(base);
+      u.searchParams.set('memit_ext_auth', '1');
+      return u.toString();
+    } catch {
+      return base;
+    }
+  }
+
   async function handleLogin() {
     if (!supabase) return;
     loading = true;
@@ -29,7 +51,7 @@
     if (!supabase) return;
     loading = true;
     errorMsg = '';
-    const redirectTo = window.location.origin;
+    const redirectTo = buildRedirectTo();
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -51,7 +73,7 @@
       return;
     }
     loading = true;
-    const redirectTo = window.location.origin;
+    const redirectTo = buildRedirectTo();
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     loading = false;
     if (error) {
@@ -65,7 +87,7 @@
   /** @param {import('@supabase/supabase-js').Provider} provider */
   async function handleSocial(provider) {
     if (!supabase) return;
-    const redirectTo = window.location.origin;
+    const redirectTo = buildRedirectTo();
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo }

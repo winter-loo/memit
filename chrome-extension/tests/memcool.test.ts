@@ -72,6 +72,8 @@ describe('MemCoolExplainer', () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
     await explainer.explain('test', { modelId: 'gemini-1.5-pro' });
-    expect(fetch).toHaveBeenCalledWith('https://memstore.ldd.cool/explain/test?model=gemini-1.5-pro');
+    expect(fetch).toHaveBeenCalledWith(
+      'https://memstore.ldd.cool/explain/test?model=gemini-1.5-pro'
+    );
   });
 });

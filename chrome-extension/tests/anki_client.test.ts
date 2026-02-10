@@ -40,6 +40,8 @@ describe('AnkiClient', () => {
     };
     vi.mocked(fetch).mockResolvedValue(mockResponse as Response);
 
-    await expect(client.addNote('Front', 'Back', 'test-token')).rejects.toThrow('Database connection failed');
+    await expect(client.addNote('Front', 'Back', 'test-token')).rejects.toThrow(
+      'Database connection failed'
+    );
   });
 });

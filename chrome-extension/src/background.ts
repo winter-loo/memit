@@ -10,6 +10,40 @@ const openrouter = new OpenRouterExplainer();
 const gemini = new GeminiExplainer();
 const anki = new AnkiClient();
 
+const DEFAULT_MEMSTORE_URL = 'https://memstore.ldd.cool';
+const DEFAULT_MEMIT_URL = 'https://memit.ldd.cool';
+
+function normalizeBaseUrl(url: string): string {
+  return (url || '').replace(/\/$/, '');
+}
+
+function openAuthTab(authUrl: string) {
+  const normalized = normalizeBaseUrl(authUrl || DEFAULT_MEMIT_URL);
+  if (!normalized) return;
+
+  // Mark auth as pending first (so the content script can start immediately without racing the tab create).
+  chrome.storage.local.set({ ankiAuthPending: true, ankiAuthPendingSince: Date.now() });
+
+  let url = normalized;
+  try {
+    const u = new URL(normalized);
+    u.searchParams.set('memit_ext_auth', '1');
+    url = u.toString();
+  } catch {
+    // Fall back to the provided string if it's not a valid URL.
+  }
+
+  chrome.tabs.create({ url });
+}
+
+function isAuthErrorMessage(msg: string): boolean {
+  return (
+    msg.includes('Auth Error: 401') ||
+    msg.includes('Auth Error: 403') ||
+    msg.includes('Missing Bearer token')
+  );
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'mem-it',
@@ -18,17 +52,30 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 
   // Initialize default settings
-  chrome.storage.sync.get(['theme', 'modelId'], (result) => {
-    if (!result.theme) {
-      chrome.storage.sync.set({ theme: 'light' });
+  chrome.storage.sync.get(
+    ['theme', 'modelId', 'ankiBackendUrl', 'ankiAuthUrl'],
+    (result: {
+      theme?: string;
+      modelId?: string;
+      ankiBackendUrl?: string;
+      ankiAuthUrl?: string;
+    }) => {
+      if (!result.theme) {
+        chrome.storage.sync.set({ theme: 'light' });
+      }
+      if (!result.modelId) {
+        chrome.storage.sync.set({ modelId: 'memcool:gemini-2.5-flash-lite' });
+      }
+      const currentBackendUrl = normalizeBaseUrl(result.ankiBackendUrl || '');
+      // Migration: older builds used memit.ldd.cool as the backend default. memit.ldd.cool is frontend-only.
+      if (!currentBackendUrl || currentBackendUrl === DEFAULT_MEMIT_URL) {
+        chrome.storage.sync.set({ ankiBackendUrl: DEFAULT_MEMSTORE_URL });
+      }
+      if (!result.ankiAuthUrl) {
+        chrome.storage.sync.set({ ankiAuthUrl: DEFAULT_MEMIT_URL });
+      }
     }
-    if (!result.modelId) {
-      chrome.storage.sync.set({ modelId: 'memcool:gemini-2.5-flash-lite' });
-    }
-    if (!result.ankiBackendUrl) {
-      chrome.storage.sync.set({ ankiBackendUrl: 'https://memit.ldd.cool' });
-    }
-  });
+  );
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -60,7 +107,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ankiBackendUrl?: string;
       }) => {
         const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
-        const ankiBackendUrl = settings.ankiBackendUrl || 'https://memit.ldd.cool';
+        const ankiBackendUrl = settings.ankiBackendUrl || DEFAULT_MEMSTORE_URL;
 
         memcool.setBaseUrl(ankiBackendUrl);
 
@@ -116,17 +163,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.sidePanel.open({ tabId: sender.tab.id });
     }
   } else if (message.type === 'ANKI_AUTH_TOKEN') {
-    // Received from auth-bridge content script on https://mem.ldd.cool/*
+    // Received from auth-bridge content script on the configured auth origin (default: memit.ldd.cool)
     const token = message.token;
     if (typeof token === 'string' && token.length > 0) {
-      chrome.storage.local.set({ ankiAuthToken: token });
+      const toSet: Record<string, unknown> = { ankiAuthToken: token };
+      const toRemove: string[] = [];
 
-      // If this tab was opened for login, close it.
-      if (sender.tab?.id) {
-        chrome.tabs.remove(sender.tab.id).catch(() => {
-          // ignore
-        });
+      if (typeof message.fallbackToken === 'string' && message.fallbackToken.length > 0) {
+        toSet.ankiAuthTokenFallback = message.fallbackToken;
+      } else {
+        toRemove.push('ankiAuthTokenFallback');
       }
+
+      if (typeof message.tokenType === 'string' && message.tokenType.length > 0) {
+        toSet.ankiAuthTokenType = message.tokenType;
+      } else {
+        toRemove.push('ankiAuthTokenType');
+      }
+
+      chrome.storage.local.set(toSet);
+      if (toRemove.length > 0) {
+        chrome.storage.local.remove(toRemove);
+      }
+
+      // Clear pending auth state (and clean up legacy keys if present).
+      chrome.storage.local.remove([
+        'ankiAuthPending',
+        'ankiAuthPendingSince',
+        'ankiAuthPendingTabId',
+      ]);
 
       sendResponse({ success: true });
     } else {
@@ -136,53 +201,92 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'SAVE_TO_ANKI') {
     const html = formatExplanationToHtml(message.explanation);
 
-    chrome.storage.sync.get(['ankiBackendUrl'], (syncResult: { ankiBackendUrl?: string }) => {
-      const ankiBackendUrl = syncResult.ankiBackendUrl || 'https://memit.ldd.cool';
-      anki.setBaseUrl(ankiBackendUrl);
+    chrome.storage.sync.get(
+      ['ankiBackendUrl', 'ankiAuthUrl'],
+      (syncResult: { ankiBackendUrl?: string; ankiAuthUrl?: string }) => {
+        const ankiBackendUrl = syncResult.ankiBackendUrl || DEFAULT_MEMSTORE_URL;
+        const ankiAuthUrl = syncResult.ankiAuthUrl || DEFAULT_MEMIT_URL;
+        anki.setBaseUrl(ankiBackendUrl);
 
-      const openLoginTab = () => {
-        chrome.tabs.create({ url: ankiBackendUrl });
-      };
+        const openLoginTab = () => openAuthTab(ankiAuthUrl);
 
-      chrome.storage.local.get(['ankiAuthToken'], async (result: { ankiAuthToken?: string }) => {
-        const token = result.ankiAuthToken;
-        if (!token) {
-          openLoginTab();
-          sendResponse({
-            error:
-              'Not signed in to Anki service. A sign-in tab has been opened; please sign in then try again.',
-            needsLogin: true,
-          });
-          return;
-        }
+        chrome.storage.local.get(
+          ['ankiAuthToken', 'ankiAuthTokenFallback'],
+          async (result: { ankiAuthToken?: string; ankiAuthTokenFallback?: string }) => {
+            const primaryToken =
+              typeof result.ankiAuthToken === 'string' ? result.ankiAuthToken : '';
+            const fallbackToken =
+              typeof result.ankiAuthTokenFallback === 'string' ? result.ankiAuthTokenFallback : '';
 
-        try {
-          // Validate token first (lightweight)
-          await anki.whoami(token);
-          const noteId = await anki.addNote(message.word, html, token);
-          sendResponse({ success: true, noteId });
-        } catch (error: any) {
-          // If auth failed, prompt login and let user retry.
-          const msg = error?.message || String(error);
-          if (
-            msg.includes('Auth Error: 401') ||
-            msg.includes('Auth Error: 403') ||
-            msg.includes('Missing Bearer token')
-          ) {
-            chrome.storage.local.remove(['ankiAuthToken']);
-            openLoginTab();
-            sendResponse({
-              error:
-                'Your Anki service login expired. A sign-in tab has been opened; please sign in then try again.',
-              needsLogin: true,
-            });
-            return;
+            const hasPrimary = primaryToken.length > 0;
+            const hasFallback = fallbackToken.length > 0;
+            if (!hasPrimary && !hasFallback) {
+              openLoginTab();
+              sendResponse({
+                error:
+                  'Not signed in to Anki service. A sign-in tab has been opened; please sign in then try again.',
+                needsLogin: true,
+              });
+              return;
+            }
+
+            const attemptSave = async (tokenToUse: string): Promise<number> => {
+              // Validate token first (lightweight)
+              await anki.whoami(tokenToUse);
+              return await anki.addNote(message.word, html, tokenToUse);
+            };
+
+            const firstToken = hasPrimary ? primaryToken : fallbackToken;
+            const secondToken = hasPrimary && hasFallback ? fallbackToken : '';
+
+            try {
+              const noteId = await attemptSave(firstToken);
+              sendResponse({ success: true, noteId });
+            } catch (error: unknown) {
+              const msg = error instanceof Error ? error.message : String(error);
+              if (isAuthErrorMessage(msg) && secondToken) {
+                try {
+                  const noteId = await attemptSave(secondToken);
+                  // Promote the working token so future saves don't need a retry.
+                  chrome.storage.local.set({ ankiAuthToken: secondToken });
+                  chrome.storage.local.remove(['ankiAuthTokenFallback']);
+                  sendResponse({ success: true, noteId });
+                  return;
+                } catch (error2: unknown) {
+                  const msg2 = error2 instanceof Error ? error2.message : String(error2);
+                  if (isAuthErrorMessage(msg2)) {
+                    chrome.storage.local.remove(['ankiAuthToken', 'ankiAuthTokenFallback']);
+                    openLoginTab();
+                    sendResponse({
+                      error:
+                        'Your Anki service login expired. A sign-in tab has been opened; please sign in then try again.',
+                      needsLogin: true,
+                    });
+                    return;
+                  }
+
+                  sendResponse({ error: msg2 });
+                  return;
+                }
+              }
+
+              if (isAuthErrorMessage(msg)) {
+                chrome.storage.local.remove(['ankiAuthToken', 'ankiAuthTokenFallback']);
+                openLoginTab();
+                sendResponse({
+                  error:
+                    'Your Anki service login expired. A sign-in tab has been opened; please sign in then try again.',
+                  needsLogin: true,
+                });
+                return;
+              }
+
+              sendResponse({ error: msg });
+            }
           }
-
-          sendResponse({ error: msg });
-        }
-      });
-    });
+        );
+      }
+    );
 
     return true;
   } else if (message.type === 'SPEAK_TEXT') {

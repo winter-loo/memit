@@ -1,12 +1,89 @@
 // Content script (runs on all pages)
-// Purpose: when user signs in on the configured backend origin, detect Supabase session in
-// localStorage and forward access token to the extension.
+// Purpose: when the extension needs an auth token, detect the Supabase session on the configured
+// Memit origin and forward the provider token (and access token as a fallback) to the extension.
 
 function normalizeBaseUrl(url: string): string {
   return (url || '').replace(/\/$/, '');
 }
 
-function findSupabaseAccessToken(): string | null {
+const EXT_AUTH_QUERY_PARAM = 'memit_ext_auth';
+const EXT_AUTH_SESSION_KEY = 'memit_ext_auth_tab';
+
+function isExtensionAuthTab(): boolean {
+  // Mark the tab once via URL so the state survives OAuth redirects that drop the query string.
+  try {
+    const url = new URL(location.href);
+    if (url.searchParams.get(EXT_AUTH_QUERY_PARAM) === '1') {
+      try {
+        sessionStorage.setItem(EXT_AUTH_SESSION_KEY, '1');
+      } catch {
+        // ignore
+      }
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    return sessionStorage.getItem(EXT_AUTH_SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+type SupabaseTokens = { providerToken?: string; accessToken?: string; expiresAt?: number };
+
+function extractSupabaseTokens(raw: string): SupabaseTokens | null {
+  try {
+    const parsed = JSON.parse(raw);
+
+    const providerToken =
+      parsed?.provider_token ??
+      parsed?.currentSession?.provider_token ??
+      parsed?.session?.provider_token ??
+      parsed?.data?.session?.provider_token;
+
+    const accessToken =
+      parsed?.access_token ??
+      parsed?.currentSession?.access_token ??
+      parsed?.session?.access_token ??
+      parsed?.data?.session?.access_token;
+
+    const tokens: SupabaseTokens = {};
+    if (typeof providerToken === 'string' && providerToken.length > 0) {
+      tokens.providerToken = providerToken;
+    }
+    if (typeof accessToken === 'string' && accessToken.length > 0) {
+      tokens.accessToken = accessToken;
+    }
+
+    if (!tokens.providerToken && !tokens.accessToken) return null;
+
+    const expiresAt =
+      parsed?.expires_at ??
+      parsed?.currentSession?.expires_at ??
+      parsed?.session?.expires_at ??
+      parsed?.data?.session?.expires_at;
+
+    if (typeof expiresAt === 'number') {
+      tokens.expiresAt = expiresAt;
+    }
+
+    // Supabase stores expires_at as a unix timestamp in seconds. If it's expired (or about to),
+    // wait for the page to refresh it rather than capturing a dead token.
+    if (typeof expiresAt === 'number') {
+      const now = Math.floor(Date.now() / 1000);
+      if (expiresAt < now + 30) return null;
+    }
+
+    return tokens;
+  } catch {
+    return null;
+  }
+}
+
+function findSupabaseTokens(): SupabaseTokens | null {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -18,14 +95,8 @@ function findSupabaseAccessToken(): string | null {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
 
-      const parsed = JSON.parse(raw);
-      // Supabase v2: { currentSession: { access_token, ... } }
-      const token = parsed?.currentSession?.access_token;
-      if (typeof token === 'string' && token.length > 0) return token;
-
-      // Some variants store directly as { access_token }
-      const token2 = parsed?.access_token;
-      if (typeof token2 === 'string' && token2.length > 0) return token2;
+      const tokens = extractSupabaseTokens(raw);
+      if (tokens) return tokens;
     }
   } catch {
     // ignore
@@ -34,26 +105,43 @@ function findSupabaseAccessToken(): string | null {
 }
 
 let sent = false;
+let started = false;
 
 function trySendToken() {
   if (sent) return;
-  const token = findSupabaseAccessToken();
-  if (!token) return;
+  const tokens = findSupabaseTokens();
+  if (!tokens) return;
 
-  sent = true;
-  chrome.runtime.sendMessage({
-    type: 'ANKI_AUTH_TOKEN',
-    token,
-    sourceUrl: location.href,
+  // Prefer provider_token because that is what the backend expects in this deployment.
+  // Keep access_token as a fallback so the background can auto-detect if needed.
+  const primaryToken = tokens.providerToken || tokens.accessToken;
+  if (!primaryToken) return;
+  const fallbackToken =
+    tokens.providerToken && tokens.accessToken && primaryToken === tokens.providerToken
+      ? tokens.accessToken
+      : tokens.providerToken && tokens.accessToken
+        ? tokens.providerToken
+        : undefined;
+
+  // Only forward tokens when an auth flow is pending, to avoid interfering with normal Memit usage.
+  chrome.storage.local.get(['ankiAuthPending'], (res: { ankiAuthPending?: boolean }) => {
+    if (sent) return;
+    if (!res.ankiAuthPending) return;
+
+    sent = true;
+    chrome.runtime.sendMessage({
+      type: 'ANKI_AUTH_TOKEN',
+      token: primaryToken,
+      fallbackToken,
+      tokenType: primaryToken === tokens.providerToken ? 'provider_token' : 'access_token',
+      sourceUrl: location.href,
+    });
   });
 }
 
-chrome.storage.sync.get(['ankiBackendUrl'], (res: { ankiBackendUrl?: string }) => {
-  const configured = normalizeBaseUrl(res.ankiBackendUrl || 'https://memstore.ldd.cool');
-  if (!configured) return;
-
-  // Only run on the configured backend origin.
-  if (!location.href.startsWith(configured)) return;
+function startPolling() {
+  if (started) return;
+  started = true;
 
   // Try immediately, then poll for a short while.
   trySendToken();
@@ -64,4 +152,25 @@ chrome.storage.sync.get(['ankiBackendUrl'], (res: { ankiBackendUrl?: string }) =
 
   // Safety timeout (stop polling after 2 minutes)
   setTimeout(() => clearInterval(interval), 2 * 60 * 1000);
+}
+
+chrome.storage.sync.get(['ankiAuthUrl'], (res: { ankiAuthUrl?: string }) => {
+  const configured = normalizeBaseUrl(res.ankiAuthUrl || 'https://memit.ldd.cool');
+  if (!configured) return;
+
+  // Only run on the configured auth origin (exact origin match to avoid prefix spoofing).
+  try {
+    const here = new URL(location.href);
+    const cfg = new URL(configured);
+    if (here.origin !== cfg.origin) return;
+    if (!here.href.startsWith(configured)) return;
+  } catch {
+    return;
+  }
+
+  // Only the dedicated auth tab is allowed to forward tokens. This prevents normal Memit tabs
+  // from being auto-closed or leaking tokens when the extension triggers a login.
+  if (!isExtensionAuthTab()) return;
+
+  startPolling();
 });

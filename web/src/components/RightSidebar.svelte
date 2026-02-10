@@ -89,10 +89,10 @@
           <div
             class="progress-3d shadow-inner h-[18px] bg-[#F3F4F6] rounded-full relative overflow-hidden"
           >
-          <div
-            class="progress-fill-3d h-full rounded-full relative shadow-[inset_0_4px_0_rgba(255,255,255,0.3)] bg-gradient-to-r from-[#FFB347] to-[#FF8C00] transition-all duration-1000"
-            style="width: {Math.min(100, (dailyStudied / dailyGoal) * 100)}%"
-          ></div>
+            <div
+              class="progress-fill-3d h-full rounded-full relative shadow-[inset_0_4px_0_rgba(255,255,255,0.3)] bg-gradient-to-r from-[#FFB347] to-[#FF8C00] transition-all duration-1000"
+              style="width: {Math.min(100, (dailyStudied / dailyGoal) * 100)}%"
+            ></div>
           </div>
           <a
             href={resolve('/practice')}
@@ -118,7 +118,8 @@
         <h3 class="text-xl font-fredoka font-bold text-slate-800 dark:text-white">Achievements</h3>
         <button
           class="text-xs font-bold text-accent uppercase tracking-widest hover:underline bg-transparent border-none p-0 cursor-pointer"
-        >View all</button>
+          >View all</button
+        >
       </div>
       <div class="grid grid-cols-4 gap-3">
         <div

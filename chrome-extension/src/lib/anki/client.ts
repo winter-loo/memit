@@ -1,5 +1,5 @@
 export class AnkiClient {
-  private baseUrl = 'https://memit.ldd.cool';
+  private baseUrl = 'https://memstore.ldd.cool';
 
   setBaseUrl(url: string) {
     this.baseUrl = url.replace(/\/$/, '');
@@ -13,7 +13,9 @@ export class AnkiClient {
     return `${this.baseUrl}/api/auth/whoami`;
   }
 
-  async whoami(token: string): Promise<{ user_id: string; collection_id: string; auth_mode: string; jwt_alg: string }> {
+  async whoami(
+    token: string
+  ): Promise<{ user_id: string; collection_id: string; auth_mode: string; jwt_alg: string }> {
     const response = await fetch(this.whoamiUrl, {
       method: 'GET',
       headers: {

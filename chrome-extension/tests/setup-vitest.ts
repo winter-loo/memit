@@ -7,6 +7,7 @@ import { vi } from 'vitest';
     sendMessage: vi.fn(),
     onMessage: {
       addListener: vi.fn(),
+      removeListener: vi.fn(),
     },
   },
   storage: {

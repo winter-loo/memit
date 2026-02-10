@@ -11,6 +11,7 @@
     modelId: string;
     openRouterApiKey: string;
     geminiApiKey: string;
+    ankiAuthUrl: string;
     ankiBackendUrl: string;
     responseTimeout: number;
   }
@@ -22,7 +23,8 @@
     modelId: 'memcool:gemini-2.5-flash-lite',
     openRouterApiKey: '',
     geminiApiKey: '',
-    ankiBackendUrl: 'https://memit.ldd.cool',
+    ankiAuthUrl: 'https://memit.ldd.cool',
+    ankiBackendUrl: 'https://memstore.ldd.cool',
     responseTimeout: 5,
   });
 
@@ -41,6 +43,7 @@
         'modelId',
         'openRouterApiKey',
         'geminiApiKey',
+        'ankiAuthUrl',
         'ankiBackendUrl',
         'responseTimeout',
       ],
@@ -51,7 +54,8 @@
         settings.modelId = result.modelId ?? 'memcool:gemini-2.5-flash-lite';
         settings.openRouterApiKey = result.openRouterApiKey ?? '';
         settings.geminiApiKey = result.geminiApiKey ?? '';
-        settings.ankiBackendUrl = result.ankiBackendUrl ?? 'https://memit.ldd.cool';
+        settings.ankiAuthUrl = result.ankiAuthUrl ?? 'https://memit.ldd.cool';
+        settings.ankiBackendUrl = result.ankiBackendUrl ?? 'https://memstore.ldd.cool';
         settings.responseTimeout = result.responseTimeout ?? 5;
       }
     );
@@ -66,7 +70,9 @@
         if (changes.openRouterApiKey)
           settings.openRouterApiKey = changes.openRouterApiKey.newValue as string;
         if (changes.geminiApiKey) settings.geminiApiKey = changes.geminiApiKey.newValue as string;
-        if (changes.ankiBackendUrl) settings.ankiBackendUrl = changes.ankiBackendUrl.newValue as string;
+        if (changes.ankiAuthUrl) settings.ankiAuthUrl = changes.ankiAuthUrl.newValue as string;
+        if (changes.ankiBackendUrl)
+          settings.ankiBackendUrl = changes.ankiBackendUrl.newValue as string;
         if (changes.responseTimeout)
           settings.responseTimeout = changes.responseTimeout.newValue as number;
       }
@@ -90,18 +96,33 @@
     anki.setBaseUrl(settings.ankiBackendUrl);
 
     try {
-      const result = await chrome.storage.local.get(['ankiAuthToken']);
-      const token = result.ankiAuthToken;
+      const result = await chrome.storage.local.get(['ankiAuthToken', 'ankiAuthTokenFallback']);
+      const primaryToken = typeof result.ankiAuthToken === 'string' ? result.ankiAuthToken : '';
+      const fallbackToken =
+        typeof result.ankiAuthTokenFallback === 'string' ? result.ankiAuthTokenFallback : '';
 
-      if (!token) {
+      if (!primaryToken && !fallbackToken) {
         authStatus = { ok: false, message: 'No local token found. Please sign in.' };
         return;
       }
 
-      const info = await anki.whoami(token);
-      authStatus = { ok: true, message: `Connected as ${info.user_id}` };
-    } catch (e: any) {
-      authStatus = { ok: false, message: e?.message || 'Connection failed' };
+      try {
+        const info = await anki.whoami(primaryToken || fallbackToken);
+        authStatus = { ok: true, message: `Connected as ${info.user_id}` };
+      } catch (e: unknown) {
+        if (primaryToken && fallbackToken) {
+          // If the primary token fails, try the fallback and promote it if it works.
+          const info = await anki.whoami(fallbackToken);
+          await chrome.storage.local.set({ ankiAuthToken: fallbackToken });
+          await chrome.storage.local.remove(['ankiAuthTokenFallback']);
+          authStatus = { ok: true, message: `Connected as ${info.user_id}` };
+        } else {
+          throw e;
+        }
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Connection failed';
+      authStatus = { ok: false, message: msg };
     } finally {
       testingAuth = false;
     }
@@ -188,15 +209,32 @@
 
       <div class="setting-item">
         <div class="setting-info">
+          <label for="anki-auth-url">Sign-in URL</label>
+          <p class="description">
+            Where you sign in to get an access token (frontend). Default is memit.ldd.cool.
+          </p>
+        </div>
+        <div class="setting-action">
+          <input
+            type="text"
+            id="anki-auth-url"
+            bind:value={settings.ankiAuthUrl}
+            placeholder="https://memit.ldd.cool"
+          />
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
           <label for="anki-backend-url">Backend Service URL</label>
-          <p class="description">The URL of your anki-service (e.g., <a href="https://memit.ldd.cool" target="_blank">https://memit.ldd.cool</a>).</p>
+          <p class="description">The API base URL (backend). Default is memstore.ldd.cool.</p>
         </div>
         <div class="setting-action">
           <input
             type="text"
             id="anki-backend-url"
             bind:value={settings.ankiBackendUrl}
-            placeholder="https://memit.ldd.cool"
+            placeholder="https://memstore.ldd.cool"
           />
           <button class="test-btn" onclick={testAuth} disabled={testingAuth}>
             {#if testingAuth}

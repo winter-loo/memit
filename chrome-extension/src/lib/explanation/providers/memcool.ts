@@ -3,7 +3,7 @@ import type { ContentExplainer, DictionaryResponse } from '../types';
 export class MemCoolExplainer implements ContentExplainer {
   id = 'memcool';
   name = 'Mem.Cool';
-  private baseUrl = 'https://memit.ldd.cool';
+  private baseUrl = 'https://memstore.ldd.cool';
 
   setBaseUrl(url: string) {
     this.baseUrl = url.replace(/\/$/, '');

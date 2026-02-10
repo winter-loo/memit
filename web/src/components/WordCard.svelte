@@ -8,7 +8,9 @@
       <div class="space-y-0.5">
         <div class="flex items-center justify-between">
           <div class="flex items-baseline gap-3">
-            <h2 class="text-2xl font-fredoka font-bold tracking-tight text-slate-800 dark:text-white">
+            <h2
+              class="text-2xl font-fredoka font-bold tracking-tight text-slate-800 dark:text-white"
+            >
               {word.text}
             </h2>
             <span class="text-[10px] font-medium text-slate-400">{word.addedTime}</span>
@@ -34,7 +36,9 @@
       </div>
 
       {#if word.translation}
-        <div class="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-800/30">
+        <div
+          class="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-800/30"
+        >
           <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
             Translation
           </p>
