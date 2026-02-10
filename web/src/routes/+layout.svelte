@@ -44,9 +44,9 @@
   <div class="max-w-7xl mx-auto flex min-h-screen">
     <Sidebar />
     <main
-      class="flex-grow border-r-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 {isHome
-        ? 'max-w-2xl'
-        : 'w-full'}"
+      class="flex-grow w-full bg-slate-50/50 lg:border-r-2 border-slate-100 dark:border-slate-800 {isHome
+        ? 'lg:max-w-2xl'
+        : ''} pb-28 lg:pb-0"
     >
       {@render children()}
     </main>
@@ -55,7 +55,7 @@
     {/if}
   </div>
   <div
-    class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t-2 border-slate-100 dark:border-slate-800 flex justify-around items-center py-4 px-6 z-50"
+    class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-t-2 border-slate-100 dark:border-slate-800 flex justify-around items-center py-3 px-4 z-50"
   >
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
     <a class="text-primary" href="/"

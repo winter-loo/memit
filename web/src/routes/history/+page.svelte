@@ -68,23 +68,23 @@
   }
 </script>
 
-<div class="py-8 px-8 h-full overflow-y-auto">
+<div class="py-4 px-4 sm:py-8 sm:px-8 h-full overflow-y-auto">
   <div class="max-w-7xl mx-auto">
-    <div class="flex items-center justify-between mb-10">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-10">
       <div>
         <h1 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white">
           Vocabulary History
         </h1>
         <p class="text-slate-500 font-medium">Manage and review your saved words</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3">
         <div class="relative">
           <span
             class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             >search</span
           >
           <input
-            class="pl-10 pr-4 py-2 bg-white dark:bg-card-dark border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-0 text-sm font-medium w-64 transition-all dark:text-white"
+            class="pl-10 pr-4 py-2 bg-white dark:bg-card-dark border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-0 text-sm font-medium w-full sm:w-64 transition-all dark:text-white"
             placeholder="Search your history..."
             type="text"
           />

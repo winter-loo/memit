@@ -19,7 +19,7 @@
 </script>
 
 <aside
-  class="w-72 flex-shrink-0 border-r-2 border-slate-100 dark:border-slate-800 flex flex-col sticky top-0 h-screen px-6 py-8"
+  class="hidden lg:flex w-72 flex-shrink-0 border-r-2 border-slate-100 dark:border-slate-800 flex-col sticky top-0 h-screen px-6 py-8"
 >
   <div class="mb-12 flex items-center gap-3">
     <div

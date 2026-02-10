@@ -128,7 +128,7 @@
   <WordDetail note={selectedNote} onClose={() => (selectedNote = null)} />
 {:else}
   <div
-    class="sticky top-0 z-10 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-8 py-6 flex items-center justify-between"
+    class="sticky top-0 z-10 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-8 sm:py-6 flex items-center justify-between gap-3"
   >
     <h1
       class="text-2xl font-fredoka font-bold text-slate-800 dark:text-white flex items-center gap-2"
@@ -149,7 +149,7 @@
       </div>
     </div>
   </div>
-  <div class="p-8 space-y-8">
+  <div class="p-4 sm:p-8 space-y-6 sm:space-y-8">
     <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
     <div class="space-y-6">
       {#if loadingNotes && notes.length === 0}
