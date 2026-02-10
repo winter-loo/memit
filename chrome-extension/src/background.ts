@@ -318,5 +318,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     });
     return true;
+  } else if (message.type === 'EXPORT_TO_ANKI_CONNECT') {
+    const note = message.note;
+    // Format for AnkiConnect
+    const payload = {
+      action: 'addNote',
+      version: 6,
+      params: {
+        note: {
+          deckName: note.deckName || 'Default',
+          modelName: note.modelName || 'Basic',
+          fields: note.fields,
+          tags: note.tags || []
+        }
+      }
+    };
+
+    fetch('http://127.0.0.1:8765', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (data.error) {
+          sendResponse({ success: false, error: data.error });
+        } else {
+          sendResponse({ success: true, result: data.result });
+        }
+      })
+      .catch((err) => {
+        sendResponse({ success: false, error: 'Could not connect to Anki. Is it running with AnkiConnect?' });
+      });
+    return true;
   }
 });
