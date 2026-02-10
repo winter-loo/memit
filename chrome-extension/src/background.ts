@@ -232,7 +232,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const attemptSave = async (tokenToUse: string): Promise<number> => {
               // Validate token first (lightweight)
               await anki.whoami(tokenToUse);
-              return await anki.addNote(message.word, html, tokenToUse);
+              return await anki.addNote(message.word, rawJson, tokenToUse);
             };
 
             const firstToken = hasPrimary ? primaryToken : fallbackToken;
