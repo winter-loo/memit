@@ -571,6 +571,20 @@ export function hideModal() {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'OPEN_MODAL') {
     openModal(message.text);
+  } else if (message.type === 'ANKI_LOGIN_SUCCESS') {
+    console.log('Received ANKI_LOGIN_SUCCESS');
+    // If we had a save error related to auth, clear it and retry saving
+    if (
+      modalProps.saveError &&
+      (modalProps.saveError.includes('Not signed in') ||
+        modalProps.saveError.includes('login expired'))
+    ) {
+      console.log('Clearing auth error and retrying save...');
+      modalProps.saveError = '';
+      if (modalProps.onSave) {
+        modalProps.onSave();
+      }
+    }
   }
 });
 

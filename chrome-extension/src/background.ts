@@ -192,6 +192,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'ankiAuthPendingTabId',
       ]);
 
+      // Broadcast login success to all active tabs so they can update UI or retry saving
+      chrome.tabs.query({}, (tabs) => {
+        for (const tab of tabs) {
+          if (tab.id) {
+            chrome.tabs.sendMessage(tab.id, { type: 'ANKI_LOGIN_SUCCESS' }).catch(() => {
+              // ignore errors for inactive/closed tabs
+            });
+          }
+        }
+      });
+
       sendResponse({ success: true });
     } else {
       sendResponse({ error: 'Missing token' });
