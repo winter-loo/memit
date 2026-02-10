@@ -58,18 +58,30 @@
     class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-t-2 border-slate-100 dark:border-slate-800 flex justify-around items-center py-3 px-4 z-50"
   >
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
-    <a class="text-primary" href="/"
-      ><span class="material-symbols-outlined text-3xl fill-1">home</span></a
+    <a
+      class={$page.url.pathname === '/' ? 'text-primary' : 'text-slate-400'}
+      href="/"
     >
-    <a class="text-slate-400" href="/practice"
-      ><span class="material-symbols-outlined text-3xl">psychology</span></a
+      <span class="material-symbols-outlined text-3xl fill-1">home</span>
+    </a>
+    <a
+      class={$page.url.pathname.startsWith('/practice') ? 'text-primary' : 'text-slate-400'}
+      href="/practice"
     >
-    <a class="text-slate-400" href="/history"
-      ><span class="material-symbols-outlined text-3xl">history</span></a
+      <span class="material-symbols-outlined text-3xl">psychology</span>
+    </a>
+    <a
+      class={$page.url.pathname.startsWith('/history') ? 'text-primary' : 'text-slate-400'}
+      href="/history"
     >
-    <a class="text-slate-400" href="/settings"
-      ><span class="material-symbols-outlined text-3xl">settings</span></a
+      <span class="material-symbols-outlined text-3xl">history</span>
+    </a>
+    <a
+      class={$page.url.pathname.startsWith('/settings') ? 'text-primary' : 'text-slate-400'}
+      href="/settings"
     >
+      <span class="material-symbols-outlined text-3xl">settings</span>
+    </a>
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
   </div>
 {/if}
