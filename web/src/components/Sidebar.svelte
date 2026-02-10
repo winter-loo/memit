@@ -6,9 +6,18 @@
 
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
+  /** @type {import('@supabase/supabase-js').User | null} */
+  let user = $state(null);
 
-  onMount(() => {
+  onMount(async () => {
     supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      user = session?.user ?? null;
+    });
   });
 
   async function handleSignOut() {
@@ -101,8 +110,8 @@
       <div class="relative">
         <img
           alt="Profile Avatar"
-          class="w-14 h-14 rounded-2xl border-b-4 border-slate-200 dark:border-slate-900"
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeD1sN-JjGtZJLrzc_y0ZsgUsptc6gBG3NYwwjn-uGP3CNzx9iLsNzl2sOHgUNIEOPx0PDcQZJ6CTCwpr8N2U1EAWzRMQq4PQNHSeayyjTbv7ynWTDxqo_hHp7-D0E7Vf6s9e1h8z-S_Vlabz1ZKzdv2c4nz1wXmRbrJoRKUF7hRekN1W7U-g9A-oroqg2wxviPwAeuRX-47MI3y7Px56mbrLZYu7f1PjfK12GYIoDDF5-9h5uNJi3lsajYSYNiRvGau6rQ7m5ShU"
+          class="w-14 h-14 rounded-2xl border-b-4 border-slate-200 dark:border-slate-900 object-cover"
+          src={user?.user_metadata?.avatar_url || "https://lh3.googleusercontent.com/aida-public/AB6AXuDeD1sN-JjGtZJLrzc_y0ZsgUsptc6gBG3NYwwjn-uGP3CNzx9iLsNzl2sOHgUNIEOPx0PDcQZJ6CTCwpr8N2U1EAWzRMQq4PQNHSeayyjTbv7ynWTDxqo_hHp7-D0E7Vf6s9e1h8z-S_Vlabz1ZKzdv2c4nz1wXmRbrJoRKUF7hRekN1W7U-g9A-oroqg2wxviPwAeuRX-47MI3y7Px56mbrLZYu7f1PjfK12GYIoDDF5-9h5uNJi3lsajYSYNiRvGau6rQ7m5ShU"}
         />
         <div
           class="absolute -top-3 -right-3 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full border-2 border-white shadow-sm font-fredoka"
@@ -112,7 +121,7 @@
       </div>
       <div class="flex-grow min-w-0">
         <p class="text-base font-fredoka font-bold text-slate-800 dark:text-white truncate">
-          David Lu
+          {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
         </p>
         <div class="flex items-center gap-1">
           <span class="material-symbols-outlined text-primary text-sm fill-1">bolt</span>
