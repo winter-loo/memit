@@ -3,17 +3,16 @@
   import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
   import { createClient } from '@supabase/supabase-js';
   import HistoryCard from '../../components/HistoryCard.svelte';
-  import HistoryDetailModal from '../../components/HistoryDetailModal.svelte';
+  import WordDetail from '../../components/WordDetail.svelte';
   import { PUBLIC_API_BASE_URL } from '$env/static/public';
 
   /** @typedef {{ id: string | number, fields?: string[] }} Note */
-  /** @typedef {{ text: string, definition: string, translation: string, ipa: string, detailed_explanation: string }} WordDetail */
 
   /** @type {Note[]} */
   let notes = $state([]);
   let loading = $state(true);
-  /** @type {WordDetail | null} */
-  let selectedWord = $state(null);
+  /** @type {Note | null} */
+  let selectedNote = $state(null);
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
   let user;
@@ -73,19 +72,16 @@
   });
 
   /** @param {Note} note */
-  function openModal(note) {
-    selectedWord = {
-      text: note.fields?.[0] || '',
-      definition: note._parsed?.simple_definition || '',
-      translation: note._parsed?.in_chinese || '',
-      ipa: note._parsed?.ipa_pronunciation || '',
-      detailed_explanation: note._parsed?.detailed_explanation || ''
-    };
+  function openDetail(note) {
+    selectedNote = note;
   }
 </script>
 
-<div class="py-4 px-4 sm:py-8 sm:px-8 h-full overflow-y-auto">
-  <div class="max-w-7xl mx-auto">
+{#if selectedNote}
+  <WordDetail note={selectedNote} onClose={() => (selectedNote = null)} />
+{:else}
+  <div class="py-4 px-4 sm:py-8 sm:px-8 h-full overflow-y-auto">
+    <div class="max-w-7xl mx-auto">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-10">
       <div>
         <h1 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white">
@@ -127,7 +123,7 @@
         {#each notes as note (note.id)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div onclick={() => openModal(note)}>
+          <div onclick={() => openDetail(note)}>
             <HistoryCard
               word={{
                 text: note.fields?.[0] || 'Unknown',
@@ -141,7 +137,3 @@
     </div>
   </div>
 </div>
-
-{#if selectedWord}
-  <HistoryDetailModal word={selectedWord} onClose={() => (selectedWord = null)} />
-{/if}
