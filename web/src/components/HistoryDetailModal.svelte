@@ -41,23 +41,25 @@
 
       <!-- 2. Sticky Translation Block -->
       <div class="sticky top-0 z-40 bg-white/95 backdrop-blur-sm px-6 py-4 border-b border-slate-50 shadow-sm">
-        <div class="bg-orange-50 border border-orange-200 rounded-3xl p-5 flex flex-col gap-4">
-          <div>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-              Simple Definition
-            </p>
-            <p class="text-slate-700 text-sm font-medium leading-relaxed">
-              {word.definition}
-            </p>
-          </div>
-          <div class="pt-4 border-t border-orange-200/50">
-            <p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5">
-              Translation
-            </p>
-            <p class="text-2xl font-fredoka font-bold text-primary leading-tight">
-              {word.translation}
-            </p>
-          </div>
+        <div class="bg-orange-50 border border-orange-200 rounded-3xl px-5 py-3 flex flex-col gap-1">
+          <p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-0.5">
+            Translation
+          </p>
+          <p class="text-xl font-fredoka font-bold text-primary leading-tight">
+            {word.translation}
+          </p>
+        </div>
+      </div>
+
+      <!-- 2.5 Simple Definition (Non-Sticky) -->
+      <div class="px-6 pb-2 pt-2">
+        <div class="p-4 border border-slate-100 rounded-2xl bg-slate-50/30">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+            Simple Definition
+          </p>
+          <p class="text-slate-700 text-sm font-medium leading-relaxed">
+            {word.definition}
+          </p>
         </div>
       </div>
 
