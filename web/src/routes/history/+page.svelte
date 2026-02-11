@@ -38,7 +38,23 @@
       });
       if (res.ok) {
         const data = await res.json();
-        notes = Array.isArray(data) ? data : [];
+        const loadedNotes = Array.isArray(data) ? data : [];
+        // Sort by id descending (assuming id is timestamp) to show newest first
+        notes = loadedNotes
+          .sort((a, b) => Number(b.id) - Number(a.id))
+          .map((n) => {
+            const rawBack = n.fields?.[1] || '';
+            let parsed = {};
+            try {
+              parsed = JSON.parse(rawBack);
+            } catch {
+              // fallback if not json
+            }
+            return {
+              ...n,
+              _parsed: parsed
+            };
+          });
       }
     } catch (e) {
       console.error(e);
@@ -60,10 +76,10 @@
   function openModal(note) {
     selectedWord = {
       text: note.fields?.[0] || '',
-      definition: note.fields?.[1] || '',
-      translation: note.fields?.[2] || '',
-      ipa: note.fields?.[4] || '',
-      detailed_explanation: 'Loading...'
+      definition: note._parsed?.simple_definition || '',
+      translation: note._parsed?.in_chinese || '',
+      ipa: note._parsed?.ipa_pronunciation || '',
+      detailed_explanation: note._parsed?.detailed_explanation || ''
     };
   }
 </script>
@@ -115,10 +131,10 @@
             <HistoryCard
               word={{
                 text: note.fields?.[0] || 'Unknown',
-                definition: note.fields?.[1] || '...',
-                translation: note.fields?.[2] || 'Translation',
-                pos: note.fields?.[3] || '',
-                ipa: note.fields?.[4] || ''
+                definition: note._parsed?.simple_definition || 'Processing...',
+                translation: note._parsed?.in_chinese || '',
+                pos: note._parsed?.part_of_speech || '',
+                ipa: note._parsed?.ipa_pronunciation || ''
               }}
             />
           </div>
