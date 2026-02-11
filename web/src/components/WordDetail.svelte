@@ -138,14 +138,6 @@
           <span class="material-symbols-outlined text-xl">translate</span>
           {details?.in_chinese || 'Translation'}
         </p>
-        <div
-          class="mt-4 flex items-center text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3"
-        >
-          <button class="flex items-center gap-2 hover:text-accent transition-colors">
-            <span class="material-symbols-outlined text-xl">chat_bubble</span>
-            <span class="text-xs font-bold">5 dimensions</span>
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -161,7 +153,7 @@
       <div class="flex gap-4">
         <div class="z-10">
           <div
-            class="w-14 h-14 bg-accent/10 rounded-2xl flex items-center justify-center text-accent border-2 border-accent/20"
+            class="w-14 h-14 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-accent border-2 border-slate-200 dark:border-slate-600"
           >
             <span class="material-symbols-outlined text-2xl fill-1">lightbulb</span>
           </div>
@@ -174,7 +166,6 @@
             <span class="text-xs text-slate-400">@context_ai</span>
           </div>
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-            <span class="text-accent font-bold">#Usage:</span>
             {details?.detailed_explanation || 'No detailed explanation available.'}
           </p>
         </div>
@@ -188,7 +179,7 @@
         <div class="flex gap-4">
           <div class="z-10">
             <div
-              class="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border-2 border-primary/20"
+              class="w-14 h-14 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-primary border-2 border-slate-200 dark:border-slate-600"
             >
               <span class="material-symbols-outlined text-2xl fill-1">format_list_bulleted</span>
             </div>
@@ -218,9 +209,9 @@
       <div class="flex gap-4">
         <div class="z-10">
           <div
-            class="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 border-2 border-slate-200 dark:border-slate-700"
+            class="w-14 h-14 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-accent border-2 border-slate-200 dark:border-slate-600"
           >
-            <span class="material-symbols-outlined text-2xl fill-1">history_edu</span>
+            <span class="material-symbols-outlined text-2xl fill-1">genetics</span>
           </div>
         </div>
         <div class="flex-grow pt-1">
@@ -242,9 +233,9 @@
       <div class="flex gap-4">
         <div class="z-10">
           <div
-            class="w-14 h-14 bg-green-50 dark:bg-green-900/20 rounded-2xl flex items-center justify-center text-green-500 border-2 border-green-100 dark:border-green-800/30"
+            class="w-14 h-14 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-green-500 border-2 border-slate-200 dark:border-slate-600"
           >
-            <span class="material-symbols-outlined text-2xl fill-1">join_inner</span>
+            <span class="material-symbols-outlined text-2xl fill-1">extension</span>
           </div>
         </div>
         <div class="flex-grow pt-1">
@@ -257,8 +248,8 @@
             {#if details?.synonyms && details.synonyms.length > 0}
               {#each details.synonyms as synonym, i (i)}
                 <span
-                  class="px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl text-xs font-bold border border-green-100 dark:border-green-800/30"
-                  >{synonym}</span
+                  class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >{synonym}{i < details.synonyms.length - 1 ? ', ' : ''}</span
                 >
               {/each}
             {:else}
@@ -275,9 +266,9 @@
       <div class="flex gap-4">
         <div class="z-10">
           <div
-            class="w-14 h-14 bg-danger/10 rounded-2xl flex items-center justify-center text-danger border-2 border-danger/20"
+            class="w-14 h-14 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-danger border-2 border-slate-200 dark:border-slate-600"
           >
-            <span class="material-symbols-outlined text-2xl fill-1">exposure_neg_1</span>
+            <span class="material-symbols-outlined text-2xl fill-1">compare_arrows</span>
           </div>
         </div>
         <div class="flex-grow pt-1">
@@ -290,8 +281,8 @@
             {#if details?.antonyms && details.antonyms.length > 0}
               {#each details.antonyms as antonym, i (i)}
                 <span
-                  class="px-3 py-1.5 bg-danger/5 dark:bg-danger/10 text-danger rounded-xl text-xs font-bold border border-danger/20"
-                  >{antonym}</span
+                  class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >{antonym}{i < details.antonyms.length - 1 ? ', ' : ''}</span
                 >
               {/each}
             {:else}
