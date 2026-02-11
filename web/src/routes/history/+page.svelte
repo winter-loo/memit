@@ -133,8 +133,6 @@
                 text: note.fields?.[0] || 'Unknown',
                 definition: note._parsed?.simple_definition || 'Processing...',
                 translation: note._parsed?.in_chinese || '',
-                pos: note._parsed?.part_of_speech || '',
-                ipa: note._parsed?.ipa_pronunciation || ''
               }}
             />
           </div>
