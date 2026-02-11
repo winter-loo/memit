@@ -19,7 +19,7 @@
 
 	  import { formatRelativeTime } from '../lib/time';
 
-  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any>, mod?: number }} Note */
+  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any>, mtimeSecs?: number }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);
@@ -233,7 +233,7 @@
               <WordCard
                 word={{
                   text: note.fields?.[0] || 'Unknown',
-                  addedTime: formatRelativeTime(note.mod),
+                  addedTime: formatRelativeTime(note.mtimeSecs),
                   definition: note._parsed?.simple_definition || 'Processing...',
                   translation: note._parsed?.in_chinese || '',
                   ipa: note._parsed?.ipa_pronunciation || ''
