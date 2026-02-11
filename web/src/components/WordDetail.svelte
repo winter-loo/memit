@@ -89,7 +89,7 @@
 </script>
 
 <div
-  class="sticky top-0 z-10 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center gap-6"
+  class="sticky top-0 z-40 relative bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center gap-6"
 >
   <button
     onclick={onClose}
@@ -110,7 +110,7 @@
   <div class="relative pb-8">
     <div class="thread-line"></div>
     <div class="flex gap-4">
-      <div class="z-10">
+      <div class="z-10 shrink-0">
         <img
           alt="Bot Avatar"
           class="w-14 h-14 rounded-2xl"
@@ -122,7 +122,7 @@
           <div class="flex items-center gap-2">
             <span class="font-fredoka font-bold text-slate-800 dark:text-white">Memit AI</span>
             <span class="material-symbols-outlined text-accent text-sm fill-1">verified</span>
-            <span class="text-sm text-slate-400">@memit_bot · Just now</span>
+            <span class="text-sm text-slate-400">@memit_bot · {formatRelativeTime(note?.mtimeSecs)}</span>
           </div>
           <button class="text-slate-400 hover:text-primary"
             ><span class="material-symbols-outlined">more_horiz</span></button

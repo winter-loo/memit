@@ -6,7 +6,8 @@
   import WordDetail from '../../components/WordDetail.svelte';
   import { PUBLIC_API_BASE_URL } from '$env/static/public';
 
-  /** @typedef {{ id: string | number, fields?: string[], mtimeSecs?: number }} Note */
+  /** @typedef {{ simple_definition?: string, in_chinese?: string, [key: string]: any }} ParsedNote */
+  /** @typedef {{ id: string | number, fields?: string[], mtimeSecs?: number, _parsed?: ParsedNote }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);

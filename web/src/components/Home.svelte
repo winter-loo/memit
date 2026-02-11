@@ -139,7 +139,7 @@
     class="flex-grow border-r-2 border-slate-100 dark:border-slate-800 max-w-2xl bg-slate-50/50"
   >
     <div
-      class="sticky top-0 z-10 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-8 py-6 flex items-center justify-between"
+      class="sticky top-0 z-40 relative bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-8 py-6 flex items-center justify-between"
     >
       <h1
         class="text-2xl font-fredoka font-bold text-slate-800 dark:text-white flex items-center gap-2"

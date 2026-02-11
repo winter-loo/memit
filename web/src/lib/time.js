@@ -1,3 +1,4 @@
+/** @param {number | null | undefined} timestampSecs */
 export function formatRelativeTime(timestampSecs) {
   if (!timestampSecs) return 'Just now';
   
