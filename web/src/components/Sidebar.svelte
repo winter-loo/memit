@@ -1,23 +1,37 @@
 <script>
   import { page } from '$app/stores';
-  import { createClient } from '@supabase/supabase-js';
-  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
   import { onMount } from 'svelte';
+  import { getSupabaseClient } from '$lib/supabase';
 
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
   /** @type {import('@supabase/supabase-js').User | null} */
   let user = $state(null);
 
-  onMount(async () => {
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  onMount(() => {
+    supabase = getSupabaseClient();
+    let active = true;
 
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      const prevUserId = user?.id || null;
+      const nextUserId = session?.user?.id || null;
+      if (prevUserId === nextUserId) return;
       user = session?.user ?? null;
     });
+
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!active) return;
+      user = data.user;
+    })();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   });
 
   async function handleSignOut() {
@@ -99,7 +113,7 @@
       >
         <span class="material-symbols-outlined text-2xl fill-1">settings</span>
       </div>
-      <span>Setting</span>
+      <span>Settings</span>
     </a>
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
   </nav>

@@ -1,5 +1,5 @@
 <script>
-  import { PUBLIC_API_BASE_URL } from '$env/static/public';
+  import { apiFetch, apiFetchAuthed } from '$lib/api';
 
   /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, origins?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
 
@@ -12,37 +12,6 @@
   /** @type {ExplainResult | null} */
   let explainResult = $state(null);
 
-  const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-
-  async function getAccessToken() {
-    if (!supabase) return null;
-    const { data, error } = await supabase.auth.getSession();
-    if (error) return null;
-    return data?.session?.access_token || null;
-  }
-
-  /** @param {string} path */
-  function apiUrl(path) {
-    if (!API_BASE) return path;
-    if (path.startsWith('/')) return `${API_BASE}${path}`;
-    return `${API_BASE}/${path}`;
-  }
-
-  /** @param {string} path @param {RequestInit} [options] */
-  async function apiFetch(path, options = {}) {
-    const token = await getAccessToken();
-    if (!token) throw new Error('Not signed in');
-    const headers = new Headers(options.headers || {});
-    headers.set('Authorization', 'Bearer ' + token);
-
-    const res = await fetch(apiUrl(path), { ...options, headers });
-    if (!res.ok) {
-      const t = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status}: ${t}`);
-    }
-    return res;
-  }
-
   async function explainWord() {
     const text = (explainText || '').trim();
     if (!text || charCount > MAX_EXPLAIN_CHARS) return;
@@ -54,11 +23,7 @@
     if (onAdding) onAdding(text);
 
     try {
-      const res = await fetch(apiUrl(`/explain/${encodeURIComponent(text)}`));
-      if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status}: ${t}`);
-      }
+      const res = await apiFetch(`/explain/${encodeURIComponent(text)}`);
       /** @type {ExplainResult} */
       const result = await res.json();
       explainResult = result;
@@ -88,7 +53,7 @@
     });
 
     try {
-      await apiFetch('/api/note/add', {
+      await apiFetchAuthed(supabase, '/api/note/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: [front, back] })

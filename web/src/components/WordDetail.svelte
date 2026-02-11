@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
-  import { PUBLIC_API_BASE_URL } from '$env/static/public';
+  import { apiFetch } from '$lib/api';
   import { wordDetailsCache } from '$lib/cache';
+  import { parseNoteBack } from '$lib/notes';
   import { formatRelativeTime } from '$lib/time';
 
   let { note, onClose } = $props();
@@ -13,31 +14,30 @@
   let loading = $state(true);
   let error = $state('');
 
-  const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-
-  /** @param {string} path */
-  function apiUrl(path) {
-    if (!API_BASE) return path;
-    if (path.startsWith('/')) return `${API_BASE}${path}`;
-    return `${API_BASE}/${path}`;
+  /** @param {Record<string, any>} parsed @param {string} word */
+  function mapParsedToDetails(parsed, word) {
+    return {
+      ...parsed,
+      word,
+      in_chinese: parsed.translation || parsed.in_chinese,
+      simple_definition: parsed.simple_definition,
+      ipa_pronunciation: parsed.ipa_pronunciation,
+      etymology: parsed.etymology || parsed.origins
+    };
   }
 
   async function loadDetails() {
-    if (!note?.fields?.[0]) return;
+    error = '';
+    if (!note?.fields?.[0]) {
+      loading = false;
+      return;
+    }
     const word = note.fields[0];
 
     // Check if we have pre-parsed JSON in note._parsed
     // (This comes from the list page loading logic or similar)
     if (note._parsed && Object.keys(note._parsed).length > 0) {
-      details = {
-        ...note._parsed,
-        word,
-        // map legacy field names if necessary, or assume extension saves consistent schema
-        in_chinese: note._parsed.in_chinese,
-        simple_definition: note._parsed.simple_definition,
-        ipa_pronunciation: note._parsed.ipa_pronunciation,
-        etymology: note._parsed.etymology
-      };
+      details = mapParsedToDetails(note._parsed, word);
       loading = false;
       return;
     }
@@ -51,29 +51,15 @@
 
     loading = true;
     try {
-      // Try to parse fields[1] first if it looks like JSON
-      try {
-        const rawBack = note.fields?.[1] || '';
-        if (rawBack.trim().startsWith('{')) {
-          const parsed = JSON.parse(rawBack);
-          details = {
-            ...parsed,
-            word,
-            in_chinese: parsed.translation || parsed.in_chinese,
-            simple_definition: parsed.simple_definition,
-            ipa_pronunciation: parsed.ipa_pronunciation,
-            etymology: parsed.etymology
-          };
-          wordDetailsCache.set(word, details);
-          loading = false;
-          return;
-        }
-      } catch {
-        // ignore parse error, fallback to API
+      const parsed = parseNoteBack(note.fields?.[1] || '');
+      if (Object.keys(parsed).length > 0) {
+        details = mapParsedToDetails(parsed, word);
+        wordDetailsCache.set(word, details);
+        loading = false;
+        return;
       }
 
-      const res = await fetch(apiUrl(`/explain/${encodeURIComponent(word)}`));
-      if (!res.ok) throw new Error('Failed to fetch details');
+      const res = await apiFetch(`/explain/${encodeURIComponent(word)}`);
       details = await res.json();
       wordDetailsCache.set(word, details);
     } catch (e) {

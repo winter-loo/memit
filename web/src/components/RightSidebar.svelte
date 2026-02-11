@@ -1,39 +1,21 @@
 <script>
   import { onMount } from 'svelte';
-  import {
-    PUBLIC_API_BASE_URL,
-    PUBLIC_SUPABASE_URL,
-    PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  } from '$env/static/public';
-  import { createClient } from '@supabase/supabase-js';
   import { resolve } from '$app/paths';
+  import { apiFetchAuthedIfSignedIn } from '$lib/api';
+  import { getSupabaseClient } from '$lib/supabase';
 
   let dailyStudied = $state(0);
   const dailyGoal = 5;
+  const currentYear = new Date().getFullYear();
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
 
-  const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-
-  async function getAccessToken() {
-    if (!supabase) return null;
-    const { data, error } = await supabase.auth.getSession();
-    if (error) return null;
-    return data?.session?.access_token || null;
-  }
-
   async function loadDailyTotal() {
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      const res = await fetch(`${API_BASE}/api/note/studied_today`, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        dailyStudied = coerceToInt(data?.msg ?? data);
-      }
+      const res = await apiFetchAuthedIfSignedIn(supabase, '/api/note/studied_today');
+      if (!res) return;
+      const data = await res.json();
+      dailyStudied = coerceToInt(data?.msg ?? data);
     } catch (e) {
       console.error('Failed to load daily total', e);
     }
@@ -56,7 +38,7 @@
   }
 
   onMount(() => {
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+    supabase = getSupabaseClient();
     loadDailyTotal();
   });
 </script>
@@ -161,17 +143,18 @@
     <div
       class="px-4 text-[11px] font-bold text-slate-400 uppercase flex flex-wrap gap-x-4 gap-y-2 opacity-70"
     >
-      <!-- svelte-ignore a11y_invalid_attribute -->
-      <!-- eslint-disable svelte/no-navigation-without-resolve -->
-      <a class="hover:text-primary transition-colors" href="javascript:void(0)">About</a>
-      <!-- svelte-ignore a11y_invalid_attribute -->
-      <a class="hover:text-primary transition-colors" href="javascript:void(0)">Store</a>
-      <!-- svelte-ignore a11y_invalid_attribute -->
-      <a class="hover:text-primary transition-colors" href="javascript:void(0)">Help</a>
-      <!-- svelte-ignore a11y_invalid_attribute -->
-      <a class="hover:text-primary transition-colors" href="javascript:void(0)">Privacy</a>
-      <!-- eslint-enable svelte/no-navigation-without-resolve -->
-      <span>© 2024 MEMIT</span>
+      <button type="button" class="hover:text-primary transition-colors cursor-pointer"
+        >About</button
+      >
+      <button type="button" class="hover:text-primary transition-colors cursor-pointer"
+        >Store</button
+      >
+      <button type="button" class="hover:text-primary transition-colors cursor-pointer">Help</button
+      >
+      <button type="button" class="hover:text-primary transition-colors cursor-pointer"
+        >Privacy</button
+      >
+      <span>© {currentYear} MEMIT</span>
     </div>
   </div>
 </aside>

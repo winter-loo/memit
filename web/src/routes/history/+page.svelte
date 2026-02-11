@@ -1,10 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
-  import { createClient } from '@supabase/supabase-js';
   import HistoryCard from '../../components/HistoryCard.svelte';
   import WordDetail from '../../components/WordDetail.svelte';
-  import { PUBLIC_API_BASE_URL } from '$env/static/public';
+  import { fetchPreparedNotes } from '$lib/notes';
+  import { getSupabaseClient } from '$lib/supabase';
 
   /** @typedef {{ simple_definition?: string, in_chinese?: string, [key: string]: any }} ParsedNote */
   /** @typedef {{ id: string | number, fields?: string[], mtimeSecs?: number, _parsed?: ParsedNote }} Note */
@@ -16,46 +15,11 @@
   let selectedNote = $state(null);
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
-  let user;
-
-  const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-
-  async function getAccessToken() {
-    if (!supabase) return null;
-    const { data, error } = await supabase.auth.getSession();
-    if (error) return null;
-    return data?.session?.access_token || null;
-  }
 
   async function loadNotes() {
     loading = true;
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      const res = await fetch(`${API_BASE}/api/note/list`, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const loadedNotes = Array.isArray(data) ? data : [];
-        // Sort by id descending (assuming id is timestamp) to show newest first
-        notes = loadedNotes
-          .sort((a, b) => Number(b.id) - Number(a.id))
-          .map((n) => {
-            const rawBack = n.fields?.[1] || '';
-            let parsed = {};
-            try {
-              parsed = JSON.parse(rawBack);
-            } catch {
-              // fallback if not json
-            }
-            return {
-              ...n,
-              _parsed: parsed
-            };
-          });
-      }
+      notes = /** @type {Note[]} */ (await fetchPreparedNotes(supabase));
     } catch (e) {
       console.error(e);
     } finally {
@@ -63,13 +27,16 @@
     }
   }
 
-  onMount(async () => {
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-    const { data } = await supabase.auth.getSession();
-    user = data?.session?.user;
-    if (user) {
-      loadNotes();
-    }
+  onMount(() => {
+    supabase = getSupabaseClient();
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        await loadNotes();
+      } else {
+        loading = false;
+      }
+    })();
   });
 
   /** @param {Note} note */

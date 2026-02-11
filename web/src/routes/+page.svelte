@@ -4,12 +4,6 @@
   import { browser } from '$app/environment';
   import { resolve } from '$app/paths';
   import { page } from '$app/stores';
-  import {
-    PUBLIC_API_BASE_URL,
-    PUBLIC_SUPABASE_URL,
-    PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  } from '$env/static/public';
-  import { createClient } from '@supabase/supabase-js';
   import AddWord from '../components/AddWord.svelte';
   import WordCard from '../components/WordCard.svelte';
   import SkeletonCard from '../components/SkeletonCard.svelte';
@@ -17,6 +11,10 @@
   import Auth from '../components/Auth.svelte';
   import ExtensionAuthHelp from '../components/ExtensionAuthHelp.svelte';
 
+  import { apiFetchAuthed } from '$lib/api';
+  import { isExtensionAuthFlowHref } from '$lib/extension-auth';
+  import { fetchPreparedNotes } from '$lib/notes';
+  import { getSupabaseClient } from '$lib/supabase';
   import { formatRelativeTime } from '../lib/time';
 
   /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any>, mtimeSecs?: number }} Note */
@@ -34,8 +32,6 @@
 
   let clickStartTime = 0;
 
-  const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-
   let isExtensionAuthFlow = $state(false);
 
   let redirectSecondsRemaining = $state(8);
@@ -44,41 +40,10 @@
     goto(resolve('/'), { replaceState: true });
   }
 
-  async function getAccessToken() {
-    if (!supabase) return null;
-    const { data, error } = await supabase.auth.getSession();
-    if (error) return null;
-    return data?.session?.access_token || null;
-  }
-
   async function loadNotes() {
+    loadingNotes = true;
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      const res = await fetch(`${API_BASE}/api/note/list`, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const loadedNotes = Array.isArray(data) ? data : [];
-        // Sort by id descending (assuming id is timestamp) to show newest first
-        notes = loadedNotes
-          .sort((a, b) => Number(b.id) - Number(a.id))
-          .map((n) => {
-            const rawBack = n.fields?.[1] || '';
-            let parsed = {};
-            try {
-              parsed = JSON.parse(rawBack);
-            } catch {
-              // fallback if not json
-            }
-            return {
-              ...n,
-              _parsed: parsed
-            };
-          });
-      }
+      notes = /** @type {Note[]} */ (await fetchPreparedNotes(supabase));
     } catch (e) {
       console.error(e);
     } finally {
@@ -91,11 +56,8 @@
     if (!noteId) return;
     if (!confirm('Delete this note?')) return;
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await fetch(`${API_BASE}/api/note/delete/@${noteId}`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token }
+      await apiFetchAuthed(supabase, `/api/note/delete/@${noteId}`, {
+        method: 'POST'
       });
       await loadNotes();
       if (selectedNote?.id === noteId) selectedNote = null;
@@ -125,36 +87,47 @@
     }
   }
 
-  onMount(async () => {
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  onMount(() => {
+    supabase = getSupabaseClient();
+    let active = true;
 
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-
-    supabase.auth.onAuthStateChange((_event, _session) => {
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, _session) => {
+      if (!active) return;
+      const prevToken = session?.access_token || null;
+      const nextToken = _session?.access_token || null;
+      if (prevToken === nextToken) return;
       session = _session;
       if (session) {
-        loadNotes();
+        void loadNotes();
       } else {
         notes = [];
+        loadingNotes = false;
       }
     });
 
-    if (session) {
-      loadNotes();
-    }
-    loadingAuth = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      session = data.session;
+      if (session) {
+        await loadNotes();
+      } else {
+        loadingNotes = false;
+      }
+      loadingAuth = false;
+    })();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   });
 
   $effect(() => {
     if (!browser) return;
-    const href = $page.url.href;
-    try {
-      const url = new URL(href);
-      isExtensionAuthFlow = url.searchParams.get('memit_ext_auth') === '1';
-    } catch {
-      isExtensionAuthFlow = false;
-    }
+    isExtensionAuthFlow = isExtensionAuthFlowHref($page.url.href);
   });
 
   $effect(() => {

@@ -1,59 +1,41 @@
 <script>
   import { onMount } from 'svelte';
-  import {
-    PUBLIC_API_BASE_URL,
-    PUBLIC_SUPABASE_URL,
-    PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  } from '$env/static/public';
-  import { createClient } from '@supabase/supabase-js';
   import { resolve } from '$app/paths';
+  import { fetchNotes } from '$lib/notes';
+  import { getSupabaseClient } from '$lib/supabase';
 
   /** @typedef {{ id: string | number, fields?: string[] }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);
   let currentIndex = $state(0);
-  let view = $state('loading'); // loading, question, answer, complete
+  let view = $state('loading'); // loading, question, answer, complete, unauthenticated
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
 
-  const API_BASE = (PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-
-  async function getAccessToken() {
-    if (!supabase) return null;
-    const { data, error } = await supabase.auth.getSession();
-    if (error) return null;
-    return data?.session?.access_token || null;
-  }
-
   async function loadNotes() {
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      const res = await fetch(`${API_BASE}/api/note/list`, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        notes = Array.isArray(data) ? data : [];
-        if (notes.length > 0) {
-          view = 'question';
-        } else {
-          view = 'complete';
-        }
+      notes = await fetchNotes(supabase);
+      if (notes.length > 0) {
+        view = 'question';
+      } else {
+        view = 'complete';
       }
     } catch (e) {
       console.error(e);
     }
   }
 
-  onMount(async () => {
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-    const { data } = await supabase.auth.getSession();
-    if (data?.session?.user) {
-      await loadNotes();
-    }
+  onMount(() => {
+    supabase = getSupabaseClient();
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        await loadNotes();
+      } else {
+        view = 'unauthenticated';
+      }
+    })();
   });
 
   function showAnswer() {
@@ -134,6 +116,21 @@
         </a>
       </div>
     </footer>
+  </div>
+{:else if view === 'unauthenticated'}
+  <div class="min-h-screen flex items-center justify-center px-6">
+    <div class="text-center space-y-4">
+      <h1 class="text-2xl font-fredoka font-bold text-slate-800 dark:text-white">
+        Sign in required
+      </h1>
+      <p class="text-slate-500 dark:text-slate-400">Please sign in to start practice.</p>
+      <a
+        href={resolve('/')}
+        class="inline-block px-5 py-2.5 rounded-xl bg-primary text-white font-bold uppercase tracking-wider text-sm"
+      >
+        Go to Login
+      </a>
+    </div>
   </div>
 {:else}
   <!-- Question/Answer View -->

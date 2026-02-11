@@ -5,8 +5,8 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
-  import { createClient } from '@supabase/supabase-js';
+  import { isExtensionAuthFlowHref } from '$lib/extension-auth';
+  import { getSupabaseClient } from '$lib/supabase';
 
   let { children } = $props();
 
@@ -22,26 +22,34 @@
 
   $effect(() => {
     if (!browser) return;
-    const href = $page.url.href;
-    try {
-      const url = new URL(href);
-      isExtensionAuthFlow = url.searchParams.get('memit_ext_auth') === '1';
-    } catch {
-      isExtensionAuthFlow = false;
-    }
+    isExtensionAuthFlow = isExtensionAuthFlowHref($page.url.href);
   });
 
-  onMount(async () => {
-    supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  onMount(() => {
+    supabase = getSupabaseClient();
+    let active = true;
 
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-
-    supabase.auth.onAuthStateChange((_event, _session) => {
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, _session) => {
+      if (!active) return;
+      const prevToken = session?.access_token || null;
+      const nextToken = _session?.access_token || null;
+      if (prevToken === nextToken) return;
       session = _session;
     });
 
-    loading = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      session = data.session;
+      loading = false;
+    })();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   });
 </script>
 

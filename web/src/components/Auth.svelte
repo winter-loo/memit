@@ -1,6 +1,7 @@
 <script>
   import { BookOpen, Eye, EyeOff } from '@lucide/svelte';
   import { siWechat, siApple } from 'simple-icons';
+  import { buildRedirectHref, isExtensionAuthFlowHref } from '$lib/extension-auth';
   import BrandIcon from './BrandIcon.svelte';
 
   let { supabase = null, onAuthSuccess = () => {} } = $props();
@@ -12,26 +13,9 @@
   let loading = $state(false);
   let view = $state('login'); // login, signup, forgot
 
-  function isExtensionAuthFlow() {
-    try {
-      const url = new URL(window.location.href);
-      return url.searchParams.get('memit_ext_auth') === '1';
-    } catch {
-      return false;
-    }
-  }
-
   function buildRedirectTo() {
     const base = window.location.origin;
-    if (!isExtensionAuthFlow()) return base;
-
-    try {
-      const u = new URL(base);
-      u.searchParams.set('memit_ext_auth', '1');
-      return u.toString();
-    } catch {
-      return base;
-    }
+    return buildRedirectHref(base, isExtensionAuthFlowHref(window.location.href));
   }
 
   async function handleLogin() {
