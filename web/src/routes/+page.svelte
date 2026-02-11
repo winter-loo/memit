@@ -17,7 +17,9 @@
   import Auth from '../components/Auth.svelte';
   import ExtensionAuthHelp from '../components/ExtensionAuthHelp.svelte';
 
-	  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any> }} Note */
+	  import { formatRelativeTime } from '../lib/time';
+
+  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any>, mod?: number }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);
@@ -231,7 +233,7 @@
               <WordCard
                 word={{
                   text: note.fields?.[0] || 'Unknown',
-                  addedTime: 'Just now',
+                  addedTime: formatRelativeTime(note.mod),
                   definition: note._parsed?.simple_definition || 'Processing...',
                   translation: note._parsed?.in_chinese || '',
                   ipa: note._parsed?.ipa_pronunciation || ''
