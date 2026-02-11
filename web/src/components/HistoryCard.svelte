@@ -8,7 +8,7 @@
   <div class="flex items-start justify-between mb-3">
     <h3 class="text-xl font-fredoka font-bold text-slate-800 dark:text-white">{word.text}</h3>
   </div>
-  
+
   <div class="mb-4">
     <span class="text-[10px] font-bold text-primary uppercase tracking-wider block mb-0.5"
       >Translation</span

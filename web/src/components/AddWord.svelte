@@ -124,12 +124,12 @@
   <div class="flex-grow flex flex-col relative">
     <div class="relative min-h-[44px]">
       <!-- Backdrop for highlighting -->
-      <div 
+      <div
         class="absolute inset-0 w-full h-full text-xl font-medium px-0 py-2 whitespace-pre-wrap break-words pointer-events-none z-0"
         style="font-family: inherit; line-height: 1.5; vertical-align: top;"
         aria-hidden="true"
       >
-        {#each chars as char, index}
+        {#each chars as char, index (index)}
           {#if index >= MAX_EXPLAIN_CHARS}
             <span class="bg-red-200 dark:bg-red-900/50 text-transparent">{char}</span>
           {:else}
@@ -148,11 +148,15 @@
         rows="1"
       ></textarea>
     </div>
-    
+
     <div
       class="flex items-center justify-between pt-3 border-t-2 border-slate-50 dark:border-slate-800 mt-2"
     >
-      <span class="text-xs font-bold uppercase tracking-widest transition-colors {isOverLimit ? 'text-danger' : 'text-slate-300'}">
+      <span
+        class="text-xs font-bold uppercase tracking-widest transition-colors {isOverLimit
+          ? 'text-danger'
+          : 'text-slate-300'}"
+      >
         {charCount} / {MAX_EXPLAIN_CHARS} chars
       </span>
       <button

@@ -17,7 +17,7 @@
   import Auth from '../components/Auth.svelte';
   import ExtensionAuthHelp from '../components/ExtensionAuthHelp.svelte';
 
-	  import { formatRelativeTime } from '../lib/time';
+  import { formatRelativeTime } from '../lib/time';
 
   /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any>, mtimeSecs?: number }} Note */
 

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { PUBLIC_API_BASE_URL } from '$env/static/public';
   import { wordDetailsCache } from '$lib/cache';
+  import { formatRelativeTime } from '$lib/time';
 
   let { note, onClose } = $props();
 
@@ -122,7 +123,9 @@
           <div class="flex items-center gap-2">
             <span class="font-fredoka font-bold text-slate-800 dark:text-white">Memit AI</span>
             <span class="material-symbols-outlined text-accent text-sm fill-1">verified</span>
-            <span class="text-sm text-slate-400">@memit_bot · {formatRelativeTime(note?.mtimeSecs)}</span>
+            <span class="text-sm text-slate-400"
+              >@memit_bot · {formatRelativeTime(note?.mtimeSecs)}</span
+            >
           </div>
           <button class="text-slate-400 hover:text-primary"
             ><span class="material-symbols-outlined">more_horiz</span></button
@@ -247,8 +250,7 @@
           <div class="flex flex-wrap gap-2">
             {#if details?.synonyms && details.synonyms.length > 0}
               {#each details.synonyms as synonym, i (i)}
-                <span
-                  class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300"
                   >{synonym}{i < details.synonyms.length - 1 ? ', ' : ''}</span
                 >
               {/each}
@@ -280,8 +282,7 @@
           <div class="flex flex-wrap gap-2">
             {#if details?.antonyms && details.antonyms.length > 0}
               {#each details.antonyms as antonym, i (i)}
-                <span
-                  class="text-sm font-medium text-slate-700 dark:text-slate-300"
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300"
                   >{antonym}{i < details.antonyms.length - 1 ? ', ' : ''}</span
                 >
               {/each}
