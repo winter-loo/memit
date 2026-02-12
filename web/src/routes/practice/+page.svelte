@@ -1,21 +1,110 @@
 <script>
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { fetchNotes } from '$lib/notes';
+  import { Confetti } from 'svelte-confetti';
+  import { fetchNotes, parseNoteBack } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
 
   /** @typedef {{ id: string | number, fields?: string[] }} Note */
+  /** @typedef {{ id: string, label: string, value: string }} RevealItem */
 
   /** @type {Note[]} */
   let notes = $state([]);
   let currentIndex = $state(0);
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
+  let answerMode = $state(''); // not_sure, easy
+  let revealCount = $state(0);
+  let latestRevealIndex = $state(-1);
+  let moreKeyFlash = $state(false);
+  let moreNudge = $state(false);
+  let moreLockPulse = $state(false);
+  let easyBurst = $state(false);
+  let cardMotion = $state('idle'); // idle, settle, swipe-out, swipe-in
+  let advancing = $state(false);
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
+  /** @type {ReturnType<typeof setTimeout>[]} */
+  let timers = [];
+
+  /** @param {() => void} fn @param {number} ms */
+  function schedule(fn, ms) {
+    const id = setTimeout(() => {
+      timers = timers.filter((timerId) => timerId !== id);
+      fn();
+    }, ms);
+    timers = [...timers, id];
+    return id;
+  }
+
+  function clearAllTimers() {
+    for (const id of timers) {
+      clearTimeout(id);
+    }
+    timers = [];
+  }
+
+  /** @param {unknown} value */
+  function firstNonEmptyString(value) {
+    return typeof value === 'string' && value.trim() ? value.trim() : '';
+  }
+
+  /** @param {unknown} value */
+  function firstNonEmptyArrayItem(value) {
+    if (!Array.isArray(value)) return '';
+    for (const item of value) {
+      const text = firstNonEmptyString(item);
+      if (text) return text;
+    }
+    return '';
+  }
+
+  /** @param {Note} note */
+  function buildRevealData(note) {
+    const rawBack = note?.fields?.[1] || '';
+    const parsed = parseNoteBack(rawBack);
+    const fallbackDefinition =
+      rawBack && typeof rawBack === 'string' && !rawBack.trim().startsWith('{') ? rawBack : '';
+
+    const example = firstNonEmptyArrayItem(parsed.examples);
+    const synonym = firstNonEmptyArrayItem(parsed.synonyms);
+    const simpleDefinition = firstNonEmptyString(parsed.simple_definition) || fallbackDefinition;
+    const translation =
+      firstNonEmptyString(parsed.in_chinese) ||
+      firstNonEmptyString(parsed.translation) ||
+      firstNonEmptyString(note?.fields?.[2]) ||
+      'No translation available.';
+    const etymology = firstNonEmptyString(parsed.etymology) || firstNonEmptyString(parsed.origins);
+
+    /** @type {RevealItem[]} */
+    const items = [];
+    if (example) items.push({ id: 'example', label: 'Example', value: example });
+    if (synonym) items.push({ id: 'synonym', label: 'Synonym', value: synonym });
+    if (simpleDefinition) {
+      items.push({ id: 'simple-definition', label: 'Simple Definition', value: simpleDefinition });
+    }
+    if (translation) items.push({ id: 'translation', label: 'Translation', value: translation });
+    if (etymology) items.push({ id: 'etymology', label: 'Etymology', value: etymology });
+
+    return { translation, items };
+  }
+
+  function resetCardAnswerState() {
+    answerMode = '';
+    revealCount = 0;
+    latestRevealIndex = -1;
+    moreKeyFlash = false;
+    moreNudge = false;
+    moreLockPulse = false;
+    easyBurst = false;
+  }
 
   async function loadNotes() {
     try {
       notes = await fetchNotes(supabase);
+      currentIndex = 0;
+      resetCardAnswerState();
+      cardMotion = 'idle';
+      advancing = false;
       if (notes.length > 0) {
         view = 'question';
       } else {
@@ -26,8 +115,48 @@
     }
   }
 
+  /** @param {number} index */
+  function markFreshReveal(index) {
+    latestRevealIndex = index;
+    schedule(() => {
+      if (latestRevealIndex === index) latestRevealIndex = -1;
+    }, 620);
+  }
+
+  function pulseNoMoreHints() {
+    moreNudge = true;
+    schedule(() => {
+      moreNudge = false;
+    }, 240);
+  }
+
   onMount(() => {
     supabase = getSupabaseClient();
+
+    /** @param {KeyboardEvent} event */
+    const handleKeyDown = (event) => {
+      if (event.key.toLowerCase() !== 'm') return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT')
+      ) {
+        return;
+      }
+      if (view === 'answer' && answerMode === 'not_sure') {
+        moreKeyFlash = true;
+        schedule(() => {
+          moreKeyFlash = false;
+        }, 180);
+      }
+      revealMore();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (data?.session?.user) {
@@ -36,22 +165,89 @@
         view = 'unauthenticated';
       }
     })();
+
+    return () => {
+      clearAllTimers();
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   });
 
-  function showAnswer() {
+  function showNotSureAnswer() {
+    answerMode = 'not_sure';
+    revealCount = revealItems.length > 0 ? 1 : 0;
+    if (revealCount > 0) markFreshReveal(0);
+    cardMotion = 'settle';
+    schedule(() => {
+      if (cardMotion === 'settle') cardMotion = 'idle';
+    }, 240);
     view = 'answer';
   }
 
-  function nextCard() {
-    if (currentIndex < notes.length - 1) {
-      currentIndex++;
-      view = 'question';
-    } else {
-      view = 'complete';
+  function showEasyAnswer() {
+    answerMode = 'easy';
+    revealCount = 0;
+    latestRevealIndex = -1;
+    easyBurst = true;
+    cardMotion = 'settle';
+    schedule(() => {
+      easyBurst = false;
+      if (cardMotion === 'settle') cardMotion = 'idle';
+    }, 340);
+    view = 'answer';
+  }
+
+  function revealMore() {
+    if (view !== 'answer' || answerMode !== 'not_sure') return;
+    if (revealCount >= revealItems.length) {
+      pulseNoMoreHints();
+      return;
+    }
+
+    revealCount += 1;
+    const freshIndex = revealCount - 1;
+    markFreshReveal(freshIndex);
+
+    if (revealCount >= revealItems.length) {
+      moreLockPulse = true;
+      schedule(() => {
+        moreLockPulse = false;
+      }, 300);
     }
   }
 
+  function nextCard() {
+    if (advancing) return;
+    if (currentIndex >= notes.length - 1) {
+      view = 'complete';
+      return;
+    }
+
+    advancing = true;
+    cardMotion = 'swipe-out';
+    schedule(() => {
+      currentIndex++;
+      resetCardAnswerState();
+      view = 'question';
+      cardMotion = 'swipe-in';
+
+      schedule(() => {
+        cardMotion = 'idle';
+        advancing = false;
+      }, 210);
+    }, 170);
+  }
+
   let currentNote = $derived(notes[currentIndex] || {});
+  let revealData = $derived(buildRevealData(currentNote));
+  let revealItems = $derived(revealData.items);
+  let visibleRevealItems = $derived(revealItems.slice(0, revealCount));
+  let hasMoreReveal = $derived(revealCount < revealItems.length);
+  let revealProgressPct = $derived(
+    revealItems.length > 0 ? (revealCount / revealItems.length) * 100 : 100
+  );
+  let revealProgressText = $derived(
+    `${Math.min(revealCount, revealItems.length)}/${revealItems.length}`
+  );
   let progress = $derived(notes.length > 0 ? (currentIndex / notes.length) * 100 : 0);
 </script>
 
@@ -64,10 +260,26 @@
     ></div>
   </div>
 {:else if view === 'complete'}
-  <!-- Complete View -->
   <div
     class="bg-white dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300 relative overflow-hidden"
   >
+    <div class="confetti-layer pointer-events-none" aria-hidden="true">
+      <!--
+        delay -1000 to cancel the initial launch delay and `top: -20px`
+        to hide the initial horizontal spreading process
+      -->
+      <Confetti
+        amount={320}
+        size={12}
+        duration={5200}
+        delay={[-1000, 2000]}
+        y={[0, 0.1]}
+        x={[-5, 5]}
+        fallDistance="135vh"
+        colorArray={['#F48C25', '#FFB347', '#38BDF8', '#22C55E', '#F43F5E', '#FDE047']}
+        disableForReducedMotion={true}
+      />
+    </div>
     <div
       class="absolute inset-0 pattern-bg pointer-events-none opacity-10"
       style="background-image: radial-gradient(#f48c25 0.5px, transparent 0.5px); background-size: 40px 40px;"
@@ -76,7 +288,6 @@
       <div class="w-full max-w-[600px] flex flex-col items-center text-center gap-8">
         <div class="relative mb-4">
           <div class="relative w-48 h-48 mx-auto z-20">
-            <!-- Placeholder for celebration image -->
             <div
               class="w-full h-full bg-center bg-no-repeat bg-contain flex items-center justify-center text-6xl"
             >
@@ -133,7 +344,6 @@
     </div>
   </div>
 {:else}
-  <!-- Question/Answer View -->
   <div
     class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300"
   >
@@ -166,68 +376,100 @@
         {/if}
 
         <div
-          class="w-full bg-white dark:bg-[#2d241a] rounded-xl p-12 flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a140d] border-2 border-gray-200 dark:border-gray-800"
+          class="practice-card w-full bg-white dark:bg-[#2d241a] rounded-xl p-12 flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a140d] border-2 border-gray-200 dark:border-gray-800"
+          class:practice-card--settle={cardMotion === 'settle'}
+          class:practice-card--swipe-out={cardMotion === 'swipe-out'}
+          class:practice-card--swipe-in={cardMotion === 'swipe-in'}
         >
           <h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
             {currentNote.fields?.[0]}
           </h1>
 
           {#if view === 'answer'}
-            <div class="flex flex-col gap-2 animate-in fade-in zoom-in duration-300">
-              <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">
-                /{currentNote.fields?.[0]}/
-              </p>
-              <!-- Mock IPA -->
-              <span
-                class="px-4 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full text-sm font-semibold uppercase tracking-wider mx-auto"
-                >definition</span
+            {#if answerMode === 'easy'}
+              <div
+                class="w-full max-w-[520px] flex flex-col gap-2 animate-in fade-in zoom-in duration-300"
               >
-              <p class="text-xl text-gray-700 dark:text-gray-200 font-medium mt-4">
-                {currentNote.fields?.[1]}
-              </p>
-            </div>
+                <span
+                  class="px-4 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full text-sm font-semibold uppercase tracking-wider mx-auto"
+                  >Translation</span
+                >
+                <div class="inline-flex mx-auto mb-1 text-primary" class:easy-burst={easyBurst}>
+                  <span class="material-symbols-outlined text-3xl fill-1">check_circle</span>
+                </div>
+                <p class="text-2xl text-primary font-fredoka font-bold mt-2">
+                  {revealData.translation}
+                </p>
+              </div>
+            {:else}
+              <div
+                class="w-full max-w-[520px] flex flex-col gap-3 animate-in fade-in zoom-in duration-300"
+              >
+                {#if visibleRevealItems.length === 0}
+                  <p class="text-gray-500 dark:text-gray-400">No additional details available.</p>
+                {:else}
+                  {#each visibleRevealItems as item, i (item.id)}
+                    <div
+                      class="reveal-card rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-left"
+                      class:reveal-card--past={i < visibleRevealItems.length - 1}
+                      class:reveal-card--latest={i === visibleRevealItems.length - 1}
+                      class:reveal-card--fresh={i === latestRevealIndex}
+                    >
+                      <p
+                        class="reveal-card-label text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1"
+                      >
+                        {item.label}
+                      </p>
+                      <p class="reveal-card-value text-gray-800 dark:text-gray-100">{item.value}</p>
+                    </div>
+                  {/each}
+                {/if}
+                <div class="flex justify-center pt-1">
+                  <button
+                    onclick={revealMore}
+                    disabled={!hasMoreReveal}
+                    class="more-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                    class:more-btn--keyflash={moreKeyFlash}
+                    class:more-btn--nudge={moreNudge}
+                    class:more-btn--lockpulse={moreLockPulse}
+                  >
+                    <span
+                      class="progress-ring"
+                      style={`background: conic-gradient(#f48c25 ${revealProgressPct}%, rgba(148, 163, 184, 0.35) 0%);`}
+                    >
+                      <span class="progress-ring-inner"></span>
+                    </span>
+                    <span class="material-symbols-outlined text-base"
+                      >{hasMoreReveal ? 'more_horiz' : 'lock'}</span
+                    >
+                    {hasMoreReveal ? `More (${revealProgressText})` : 'All hints shown'}
+                    <span class="text-[10px] opacity-70">M</span>
+                  </button>
+                </div>
+              </div>
+            {/if}
           {:else}
             <div class="flex flex-col gap-2">
               <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">...</p>
             </div>
           {/if}
         </div>
-
-        {#if view === 'question'}
-          <div class="flex items-end gap-6 w-full max-w-[420px] mt-4">
-            <div class="relative shrink-0">
-              <div
-                class="w-28 h-28 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center overflow-hidden border-4 border-white dark:border-gray-800 shadow-sm"
-              >
-                <span class="material-symbols-outlined text-4xl text-primary">psychology</span>
-              </div>
-            </div>
-            <div
-              class="flex-1 bg-white dark:bg-[#2d241a] p-4 rounded-xl rounded-bl-none border-2 border-gray-200 dark:border-gray-800 shadow-sm mb-6 relative"
-            >
-              <p class="text-gray-600 dark:text-gray-300 font-medium">Hmm, do you remember?</p>
-              <div
-                class="absolute -left-2 bottom-0 w-4 h-4 bg-white dark:bg-[#2d241a] border-l-2 border-b-2 border-gray-200 dark:border-gray-800 transform rotate-45 -translate-x-1/2"
-              ></div>
-            </div>
-          </div>
-        {/if}
       </div>
     </main>
 
     <footer
       class="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#221910] border-t-2 border-gray-200 dark:border-gray-800 p-6 z-10"
     >
-      <div class="max-w-[1024px] mx-auto flex gap-4 md:gap-6 justify-end">
+      <div class="max-w-[1024px] mx-auto flex gap-4 md:gap-6 justify-end items-center">
         {#if view === 'question'}
           <button
-            onclick={showAnswer}
+            onclick={showNotSureAnswer}
             class="flex-1 h-14 bg-white dark:bg-[#2d241a] border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 rounded-xl text-lg font-bold uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-[0_4px_0_0_#e5e7eb] active:translate-y-1 active:shadow-none cursor-pointer"
           >
             Not Sure
           </button>
           <button
-            onclick={showAnswer}
+            onclick={showEasyAnswer}
             class="flex-1 h-14 bg-primary text-white rounded-xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#d67a1f] active:translate-y-1 active:shadow-none cursor-pointer"
           >
             Easy
@@ -244,3 +486,159 @@
     </footer>
   </div>
 {/if}
+
+<style>
+  .confetti-layer {
+    position: fixed;
+    top: -20px;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    z-index: 40;
+    overflow: hidden;
+  }
+  .practice-card {
+    will-change: transform, opacity;
+  }
+  .practice-card--settle {
+    animation: cardSettle 220ms ease-out;
+  }
+  .practice-card--swipe-out {
+    animation: cardSwipeOut 170ms ease-in forwards;
+  }
+  .practice-card--swipe-in {
+    animation: cardSwipeIn 210ms ease-out;
+  }
+  .reveal-card {
+    transition:
+      transform 180ms ease,
+      opacity 180ms ease,
+      box-shadow 220ms ease;
+  }
+  .reveal-card--past {
+    opacity: 0.78;
+    transform: scale(0.985);
+  }
+  .reveal-card--past .reveal-card-label {
+    font-size: 9px;
+  }
+  .reveal-card--past .reveal-card-value {
+    font-size: 0.95rem;
+  }
+  .reveal-card--latest {
+    transform: scale(1);
+    opacity: 1;
+  }
+  .reveal-card--fresh {
+    box-shadow:
+      0 0 0 2px rgba(244, 140, 37, 0.35),
+      0 0 0 8px rgba(244, 140, 37, 0.12);
+  }
+  .more-btn {
+    transition:
+      transform 140ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+  .more-btn--keyflash {
+    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.25);
+  }
+  .more-btn--nudge {
+    animation: moreNudge 220ms ease;
+  }
+  .more-btn--lockpulse {
+    animation: lockPulse 300ms ease;
+  }
+  .progress-ring {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .progress-ring-inner {
+    width: 0.58rem;
+    height: 0.58rem;
+    border-radius: 9999px;
+    background: white;
+  }
+  :global(.dark) .progress-ring-inner {
+    background: #2d241a;
+  }
+  .easy-burst {
+    animation: easyPop 320ms ease-out;
+  }
+  @keyframes cardSettle {
+    0% {
+      transform: scale(1.02);
+    }
+    40% {
+      transform: scale(0.985);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes cardSwipeOut {
+    0% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(28px);
+      opacity: 0;
+    }
+  }
+  @keyframes cardSwipeIn {
+    0% {
+      transform: translateX(-28px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  @keyframes moreNudge {
+    0% {
+      transform: translateX(0);
+    }
+    30% {
+      transform: translateX(-2px);
+    }
+    70% {
+      transform: translateX(2px);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+  @keyframes lockPulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.04);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes easyPop {
+    0% {
+      transform: scale(0.7);
+      opacity: 0;
+    }
+    70% {
+      transform: scale(1.12);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+</style>
