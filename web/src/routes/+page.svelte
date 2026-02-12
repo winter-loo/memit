@@ -1,12 +1,12 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { browser } from '$app/environment';
   import { resolve } from '$app/paths';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import AddWord from '../components/AddWord.svelte';
+  import AddWordInputSkeleton from '../components/AddWordInputSkeleton.svelte';
   import WordCard from '../components/WordCard.svelte';
-  import SkeletonCard from '../components/SkeletonCard.svelte';
+  import WordListItemSkeleton from '../components/WordListItemSkeleton.svelte';
   import WordDetail from '../components/WordDetail.svelte';
   import Auth from '../components/Auth.svelte';
   import ExtensionAuthHelp from '../components/ExtensionAuthHelp.svelte';
@@ -32,9 +32,10 @@
 
   let clickStartTime = 0;
 
-  let isExtensionAuthFlow = $state(false);
+  let isExtensionAuthFlow = $derived.by(() => isExtensionAuthFlowHref(page.url.href));
 
   let redirectSecondsRemaining = $state(8);
+  const listSkeletonIndexes = [0, 1, 2];
 
   function goHomeNow() {
     goto(resolve('/'), { replaceState: true });
@@ -111,23 +112,19 @@
       const { data } = await supabase.auth.getSession();
       if (!active) return;
       session = data.session;
+      loadingAuth = false;
       if (session) {
-        await loadNotes();
+        void loadNotes();
       } else {
+        notes = [];
         loadingNotes = false;
       }
-      loadingAuth = false;
     })();
 
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  });
-
-  $effect(() => {
-    if (!browser) return;
-    isExtensionAuthFlow = isExtensionAuthFlowHref($page.url.href);
   });
 
   $effect(() => {
@@ -153,17 +150,11 @@
   });
 </script>
 
-{#if loadingAuth}
-  <div class="h-full flex items-center justify-center">
-    <div
-      class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"
-    ></div>
-  </div>
-{:else if !session}
+{#if !loadingAuth && !session}
   <Auth {supabase} />
-{:else if isExtensionAuthFlow}
+{:else if !loadingAuth && isExtensionAuthFlow}
   <ExtensionAuthHelp secondsRemaining={redirectSecondsRemaining} onGoHome={goHomeNow} />
-{:else if selectedNote}
+{:else if !loadingAuth && selectedNote}
   <WordDetail note={selectedNote} onClose={() => (selectedNote = null)} />
 {:else}
   <div
@@ -189,16 +180,22 @@
     </div>
   </div>
   <div class="p-4 sm:p-8 space-y-6 sm:space-y-8">
-    <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
+    {#if loadingAuth}
+      <AddWordInputSkeleton />
+    {:else if session}
+      <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
+    {/if}
     <div class="space-y-6">
-      {#if loadingNotes && notes.length === 0}
-        <div class="text-center text-slate-500">Loading...</div>
+      {#if (loadingAuth || loadingNotes) && notes.length === 0}
+        {#each listSkeletonIndexes as idx (idx)}
+          <WordListItemSkeleton />
+        {/each}
       {:else if notes.length === 0}
         <div class="text-center text-slate-500">No notes yet.</div>
       {:else}
         {#each notes as note (note.id)}
           {#if note.loading}
-            <SkeletonCard word={note.fields?.[0] || '...'} />
+            <WordListItemSkeleton />
           {:else}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->

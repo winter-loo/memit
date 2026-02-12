@@ -1,5 +1,5 @@
 <script>
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { getSupabaseClient } from '$lib/supabase';
 
@@ -58,13 +58,13 @@
     <a
       href="/"
       class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base"
-      class:active={$page.url.pathname === '/'}
+      class:active={page.url.pathname === '/'}
     >
       <div
         class="w-10 h-10 rounded-xl flex items-center justify-center text-white nav-icon-chunky"
-        class:bg-primary={$page.url.pathname === '/'}
-        class:bg-slate-200={$page.url.pathname !== '/'}
-        class:dark:bg-slate-700={$page.url.pathname !== '/'}
+        class:bg-primary={page.url.pathname === '/'}
+        class:bg-slate-200={page.url.pathname !== '/'}
+        class:dark:bg-slate-700={page.url.pathname !== '/'}
       >
         <span class="material-symbols-outlined text-2xl fill-1">home</span>
       </div>
@@ -73,13 +73,13 @@
     <a
       href="/practice"
       class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base text-slate-500"
-      class:active={$page.url.pathname === '/practice'}
+      class:active={page.url.pathname === '/practice'}
     >
       <div
         class="w-10 h-10 rounded-xl flex items-center justify-center text-white nav-icon-chunky"
-        class:bg-primary={$page.url.pathname === '/practice'}
-        class:bg-slate-200={$page.url.pathname !== '/practice'}
-        class:dark:bg-slate-700={$page.url.pathname !== '/practice'}
+        class:bg-primary={page.url.pathname === '/practice'}
+        class:bg-slate-200={page.url.pathname !== '/practice'}
+        class:dark:bg-slate-700={page.url.pathname !== '/practice'}
       >
         <span class="material-symbols-outlined text-2xl fill-1">psychology</span>
       </div>
@@ -88,13 +88,13 @@
     <a
       href="/history"
       class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base text-slate-500"
-      class:active={$page.url.pathname === '/history'}
+      class:active={page.url.pathname === '/history'}
     >
       <div
         class="w-10 h-10 rounded-xl flex items-center justify-center text-white nav-icon-chunky"
-        class:bg-primary={$page.url.pathname === '/history'}
-        class:bg-slate-200={$page.url.pathname !== '/history'}
-        class:dark:bg-slate-700={$page.url.pathname !== '/history'}
+        class:bg-primary={page.url.pathname === '/history'}
+        class:bg-slate-200={page.url.pathname !== '/history'}
+        class:dark:bg-slate-700={page.url.pathname !== '/history'}
       >
         <span class="material-symbols-outlined text-2xl fill-1">history</span>
       </div>
@@ -103,13 +103,13 @@
     <a
       href="/settings"
       class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base text-slate-500"
-      class:active={$page.url.pathname === '/settings'}
+      class:active={page.url.pathname === '/settings'}
     >
       <div
         class="w-10 h-10 rounded-xl flex items-center justify-center text-white nav-icon-chunky"
-        class:bg-primary={$page.url.pathname === '/settings'}
-        class:bg-slate-200={$page.url.pathname !== '/settings'}
-        class:dark:bg-slate-700={$page.url.pathname !== '/settings'}
+        class:bg-primary={page.url.pathname === '/settings'}
+        class:bg-slate-200={page.url.pathname !== '/settings'}
+        class:dark:bg-slate-700={page.url.pathname !== '/settings'}
       >
         <span class="material-symbols-outlined text-2xl fill-1">settings</span>
       </div>

@@ -23,7 +23,18 @@ export default [
       },
     },
     rules: {
-      "@typescript-eslint/no-deprecated": "warn",
+      "@typescript-eslint/no-deprecated": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "$app/stores",
+              message: "Use '$app/state' instead.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
@@ -37,7 +48,18 @@ export default [
       },
     },
     rules: {
-      "@typescript-eslint/no-deprecated": "warn",
+      "@typescript-eslint/no-deprecated": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "$app/stores",
+              message: "Use '$app/state' instead.",
+            },
+          ],
+        },
+      ],
     },
   },
   {

@@ -2,9 +2,8 @@
   import '../app.css';
   import Sidebar from '../components/Sidebar.svelte';
   import RightSidebar from '../components/RightSidebar.svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
   import { isExtensionAuthFlowHref } from '$lib/extension-auth';
   import { getSupabaseClient } from '$lib/supabase';
 
@@ -16,14 +15,9 @@
   let session = $state(null);
   let loading = $state(true);
 
-  let isPractice = $derived($page.url.pathname.startsWith('/practice'));
-  let isHome = $derived($page.url.pathname === '/');
-  let isExtensionAuthFlow = $state(false);
-
-  $effect(() => {
-    if (!browser) return;
-    isExtensionAuthFlow = isExtensionAuthFlowHref($page.url.href);
-  });
+  let isPractice = $derived(page.url.pathname.startsWith('/practice'));
+  let isHome = $derived(page.url.pathname === '/');
+  let isExtensionAuthFlow = $derived.by(() => isExtensionAuthFlowHref(page.url.href));
 
   onMount(() => {
     supabase = getSupabaseClient();
@@ -79,23 +73,23 @@
     class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-t-2 border-slate-100 dark:border-slate-800 flex justify-around items-center py-3 px-4 z-50"
   >
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
-    <a class={$page.url.pathname === '/' ? 'text-primary' : 'text-slate-400'} href="/">
+    <a class={page.url.pathname === '/' ? 'text-primary' : 'text-slate-400'} href="/">
       <span class="material-symbols-outlined text-3xl fill-1">home</span>
     </a>
     <a
-      class={$page.url.pathname.startsWith('/practice') ? 'text-primary' : 'text-slate-400'}
+      class={page.url.pathname.startsWith('/practice') ? 'text-primary' : 'text-slate-400'}
       href="/practice"
     >
       <span class="material-symbols-outlined text-3xl">psychology</span>
     </a>
     <a
-      class={$page.url.pathname.startsWith('/history') ? 'text-primary' : 'text-slate-400'}
+      class={page.url.pathname.startsWith('/history') ? 'text-primary' : 'text-slate-400'}
       href="/history"
     >
       <span class="material-symbols-outlined text-3xl">history</span>
     </a>
     <a
-      class={$page.url.pathname.startsWith('/settings') ? 'text-primary' : 'text-slate-400'}
+      class={page.url.pathname.startsWith('/settings') ? 'text-primary' : 'text-slate-400'}
       href="/settings"
     >
       <span class="material-symbols-outlined text-3xl">settings</span>
