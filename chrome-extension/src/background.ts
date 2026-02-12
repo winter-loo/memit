@@ -257,6 +257,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: 'Missing token' });
     }
     return true;
+  } else if (message.type === 'ANKI_AUTH_SIGNED_OUT') {
+    // The Memit app reported that there is no active Supabase session on the auth origin.
+    // Drop cached extension tokens so stale credentials cannot continue writing to backend APIs.
+    chrome.storage.local.remove(['ankiAuthToken', 'ankiAuthTokenFallback', 'ankiAuthTokenType']);
+    sendResponse({ success: true });
+    return false;
   } else if (message.type === 'SAVE_TO_ANKI') {
     const rawJson = JSON.stringify(message.explanation);
 

@@ -24,6 +24,7 @@ const chromeMock = {
     local: {
       set: vi.fn((data, callback) => callback?.()),
       get: vi.fn(),
+      remove: vi.fn((keys, callback) => callback?.()),
     },
     sync: {
       set: vi.fn((data, callback) => callback?.()),
@@ -119,5 +120,21 @@ describe('Background Script', () => {
 
     const result = messageListener(message, {}, sendResponse);
     expect(result).toBe(true);
+  });
+
+  it('should clear cached tokens when signout is reported by auth bridge', async () => {
+    await import('../src/background');
+    const messageListener = chromeMock.runtime.onMessage.addListener.mock.calls[0][0];
+    const sendResponse = vi.fn();
+
+    const result = messageListener({ type: 'ANKI_AUTH_SIGNED_OUT' }, {}, sendResponse);
+
+    expect(result).toBe(false);
+    expect(chromeMock.storage.local.remove).toHaveBeenCalledWith([
+      'ankiAuthToken',
+      'ankiAuthTokenFallback',
+      'ankiAuthTokenType',
+    ]);
+    expect(sendResponse).toHaveBeenCalledWith({ success: true });
   });
 });

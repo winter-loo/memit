@@ -8,6 +8,7 @@ function normalizeBaseUrl(url: string): string {
 
 const EXT_AUTH_QUERY_PARAM = 'memit_ext_auth';
 const EXT_AUTH_SESSION_KEY = 'memit_ext_auth_tab';
+const PAGE_SIGNOUT_MESSAGE_TYPE = 'MEMIT_SIGNED_OUT';
 
 function isExtensionAuthTab(): boolean {
   // Mark the tab once via URL so the state survives OAuth redirects that drop the query string.
@@ -104,8 +105,47 @@ function findSupabaseTokens(): SupabaseTokens | null {
   return null;
 }
 
+function hasSupabaseSessionRecord(): boolean {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (!/^sb-.*-auth-token$/.test(key)) continue;
+
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      try {
+        const parsed = JSON.parse(raw);
+        const providerToken =
+          parsed?.provider_token ??
+          parsed?.currentSession?.provider_token ??
+          parsed?.session?.provider_token ??
+          parsed?.data?.session?.provider_token;
+
+        const accessToken =
+          parsed?.access_token ??
+          parsed?.currentSession?.access_token ??
+          parsed?.session?.access_token ??
+          parsed?.data?.session?.access_token;
+
+        if (typeof providerToken === 'string' && providerToken.length > 0) return true;
+        if (typeof accessToken === 'string' && accessToken.length > 0) return true;
+      } catch {
+        // ignore malformed values
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return false;
+}
+
 let sent = false;
 let started = false;
+let signoutSyncStarted = false;
+let hadSupabaseSession: boolean | null = null;
 
 function trySendToken() {
   if (sent) return;
@@ -154,6 +194,50 @@ function startPolling() {
   setTimeout(() => clearInterval(interval), 2 * 60 * 1000);
 }
 
+function notifyExtensionSignedOut(reason: string) {
+  chrome.runtime.sendMessage({
+    type: 'ANKI_AUTH_SIGNED_OUT',
+    reason,
+    sourceUrl: location.href,
+  });
+}
+
+function syncSignedOutState() {
+  const hasSession = hasSupabaseSessionRecord();
+  if (hadSupabaseSession === hasSession) return;
+  hadSupabaseSession = hasSession;
+  if (!hasSession) {
+    notifyExtensionSignedOut('supabase_session_missing');
+  }
+}
+
+function startSignoutSync() {
+  if (signoutSyncStarted) return;
+  signoutSyncStarted = true;
+
+  syncSignedOutState();
+
+  window.addEventListener('message', (event: MessageEvent) => {
+    if (event.source !== window) return;
+    const data = event.data as { type?: string } | null;
+    if (!data || data.type !== PAGE_SIGNOUT_MESSAGE_TYPE) return;
+
+    hadSupabaseSession = false;
+    notifyExtensionSignedOut('explicit_signout_message');
+  });
+
+  window.addEventListener('storage', () => {
+    syncSignedOutState();
+  });
+
+  const interval = setInterval(() => {
+    syncSignedOutState();
+  }, 1500);
+
+  // Keep polling bounded so dormant tabs don't hold intervals forever.
+  setTimeout(() => clearInterval(interval), 60 * 60 * 1000);
+}
+
 chrome.storage.sync.get(['ankiAuthUrl'], (res: { ankiAuthUrl?: string }) => {
   const configured = normalizeBaseUrl(res.ankiAuthUrl || 'https://memit.ldd.cool');
   if (!configured) return;
@@ -167,6 +251,9 @@ chrome.storage.sync.get(['ankiAuthUrl'], (res: { ankiAuthUrl?: string }) => {
   } catch {
     return;
   }
+
+  // Keep extension auth cache in sync with the actual Memit session state.
+  startSignoutSync();
 
   // Only the dedicated auth tab is allowed to forward tokens. This prevents normal Memit tabs
   // from being auto-closed or leaking tokens when the extension triggers a login.

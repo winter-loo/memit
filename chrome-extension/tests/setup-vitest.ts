@@ -14,6 +14,7 @@ import { vi } from 'vitest';
     local: {
       get: vi.fn(),
       set: vi.fn(),
+      remove: vi.fn(),
     },
     sync: {
       get: vi.fn((keys, cb) => cb?.({})),
