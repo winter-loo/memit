@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
   import { isExtensionAuthFlowHref } from '$lib/extension-auth';
   import { getSupabaseClient } from '$lib/supabase';
+  import { initTheme } from '$lib/theme.svelte';
 
   let { children } = $props();
 
@@ -20,6 +21,7 @@
   let isExtensionAuthFlow = $derived.by(() => isExtensionAuthFlowHref(page.url.href));
 
   onMount(() => {
+    initTheme();
     supabase = getSupabaseClient();
     let active = true;
 
