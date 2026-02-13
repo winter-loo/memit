@@ -7,7 +7,7 @@
 
   let { note, onClose } = $props();
 
-  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
+  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, synonyms?: string[], antonyms?: string[], page_url?: string }} ExplainResult */
 
   /** @type {ExplainResult | null} */
   let details = $state(null);
@@ -22,7 +22,8 @@
       in_chinese: parsed.translation || parsed.in_chinese,
       simple_definition: parsed.simple_definition,
       ipa_pronunciation: parsed.ipa_pronunciation,
-      etymology: parsed.etymology || parsed.origins
+      etymology: parsed.etymology || parsed.origins,
+      page_url: parsed.page_url || parsed.pageUrl
     };
   }
 
@@ -127,6 +128,19 @@
           <span class="material-symbols-outlined text-xl">translate</span>
           {details?.in_chinese || 'Translation'}
         </p>
+
+        {#if details?.page_url}
+          <!-- eslint-disable svelte/no-navigation-without-resolve -->
+          <a
+            class="mt-2 inline-block text-sm text-slate-400 hover:text-primary underline break-all"
+            href={details.page_url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source: {details.page_url}
+          </a>
+          <!-- eslint-enable svelte/no-navigation-without-resolve -->
+        {/if}
       </div>
     </div>
   </div>
