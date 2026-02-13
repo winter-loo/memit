@@ -152,7 +152,22 @@
     animation: shimmer 1.5s infinite;
   }
   .dark .skeleton-shimmer {
-    background: linear-gradient(90deg, #2a2e37 25%, #4b5563 50%, #2a2e37 75%);
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 25%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.04) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Kept the prefers-reduced-motion: reduce rule to disable animation for users who request it. */
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer {
+      animation: none;
+      background-position: 0 0;
+    }
   }
 
   .pulse-ring {

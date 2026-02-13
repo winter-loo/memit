@@ -186,7 +186,6 @@
       <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
     {/if}
     <div class="space-y-6">
-          <WordListItemSkeleton />
       {#if (loadingAuth || loadingNotes) && notes.length === 0}
         {#each listSkeletonIndexes as idx (idx)}
           <WordListItemSkeleton />

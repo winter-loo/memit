@@ -127,9 +127,9 @@
       <button
         onclick={explainWord}
         disabled={explainLoading || !explainText.trim() || isOverLimit}
-        class="bg-primary btn-3d border-b-primary-dark text-white px-10 py-2.5 rounded-2xl font-fredoka font-bold uppercase tracking-wider text-sm hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        class="bg-primary btn-3d border-b-primary-dark text-white px-10 py-2.5 rounded-2xl font-fredoka font-bold cursor-pointer uppercase tracking-wider text-sm hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {explainLoading ? 'Explaining...' : 'Explain'}
+        {explainLoading ? 'Explaining...' : 'EXPLAIN'}
       </button>
     </div>
     {#if explainError}
