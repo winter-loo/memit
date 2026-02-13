@@ -192,7 +192,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'ankiAuthPendingTabId',
       ]);
 
-      type PendingSave = { word: string; explanation: unknown };
+      type PendingSave = { word: string; explanation: unknown; pageUrl?: string };
       const isPendingSave = (v: unknown): v is PendingSave => {
         if (!v || typeof v !== 'object') return false;
         const obj = v as Record<string, unknown>;
@@ -206,7 +206,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const pending = pendingRaw;
           try {
             // Re-construct the save request locally
-            const rawJson = JSON.stringify(pending.explanation);
+            const rawJson = JSON.stringify(
+              pending.pageUrl
+                ? (pending.explanation && typeof pending.explanation === 'object' && !Array.isArray(pending.explanation)
+                    ? { ...(pending.explanation as Record<string, unknown>), page_url: pending.pageUrl }
+                    : { explanation: pending.explanation, page_url: pending.pageUrl })
+                : pending.explanation
+            );
 
             chrome.storage.sync.get(
               ['ankiBackendUrl'],
@@ -264,7 +270,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
     return false;
   } else if (message.type === 'SAVE_TO_ANKI') {
-    const rawJson = JSON.stringify(message.explanation);
+    const pageUrl: string =
+      (typeof message.pageUrl === 'string' && message.pageUrl.length > 0
+        ? message.pageUrl
+        : sender.tab?.url) || '';
+
+    const withPageUrl = (explanation: unknown): unknown => {
+      if (explanation && typeof explanation === 'object' && !Array.isArray(explanation)) {
+        return { ...(explanation as Record<string, unknown>), page_url: pageUrl };
+      }
+      return { explanation, page_url: pageUrl };
+    };
+
+    const rawJson = JSON.stringify(withPageUrl(message.explanation));
 
     chrome.storage.sync.get(
       ['ankiBackendUrl', 'ankiAuthUrl'],
@@ -291,6 +309,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 pendingSave: {
                   word: message.word,
                   explanation: message.explanation,
+                  pageUrl,
                   timestamp: Date.now(),
                 },
               });
