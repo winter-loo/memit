@@ -61,7 +61,7 @@
   <div class="max-w-7xl mx-auto flex min-h-screen">
     <Sidebar />
     <main
-      class="flex-grow w-full bg-slate-50/50 lg:border-r-2 border-slate-100 dark:border-slate-800 {isHome
+      class="flex-grow w-full bg-slate-50/50 dark:bg-midnight-navy lg:border-r border-slate-100 dark:border-white/5 {isHome
         ? 'lg:max-w-2xl'
         : ''} pb-28 lg:pb-0"
     >
@@ -72,29 +72,29 @@
     {/if}
   </div>
   <div
-    class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-t-2 border-slate-100 dark:border-slate-800 flex justify-around items-center py-3 px-4 z-50"
+    class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-midnight-navy/95 backdrop-blur-sm border-t border-slate-100 dark:border-white/5 flex justify-around items-center py-3 px-4 z-50"
   >
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
-    <a class={page.url.pathname === '/' ? 'text-primary' : 'text-slate-400'} href="/">
-      <span class="material-symbols-outlined text-3xl fill-1">home</span>
+    <a class={page.url.pathname === '/' ? 'text-primary' : 'text-slate-400 dark:text-text-muted'} href="/">
+      <span class="material-icons-round text-3xl">home</span>
     </a>
     <a
-      class={page.url.pathname.startsWith('/practice') ? 'text-primary' : 'text-slate-400'}
+      class={page.url.pathname.startsWith('/practice') ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
       href="/practice"
     >
-      <span class="material-symbols-outlined text-3xl">psychology</span>
+      <span class="material-icons-round text-3xl">psychology</span>
     </a>
     <a
-      class={page.url.pathname.startsWith('/history') ? 'text-primary' : 'text-slate-400'}
+      class={page.url.pathname.startsWith('/history') ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
       href="/history"
     >
-      <span class="material-symbols-outlined text-3xl">history</span>
+      <span class="material-icons-round text-3xl">history</span>
     </a>
     <a
-      class={page.url.pathname.startsWith('/settings') ? 'text-primary' : 'text-slate-400'}
+      class={page.url.pathname.startsWith('/settings') ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
       href="/settings"
     >
-      <span class="material-symbols-outlined text-3xl">settings</span>
+      <span class="material-icons-round text-3xl">settings</span>
     </a>
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
   </div>

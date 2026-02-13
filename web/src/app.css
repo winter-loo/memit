@@ -22,6 +22,7 @@
   word-wrap: normal;
   direction: ltr;
   -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
 }
 
@@ -34,10 +35,18 @@
   --color-accent-dark: #1899d6;
   --color-danger: #ff4b4b;
 
+  --color-midnight-navy: #0B0E14;
+  --color-charcoal-blue: #161B22;
+  --color-navy-lighter: #2A2E37;
+  --color-nav-active: #2C1B10;
+  --color-orange-btn: #E67E22;
+  --color-text-main: #E4E7EB;
+  --color-text-muted: #9CA3AF;
+
   --color-background-light: #f9fafb;
-  --color-background-dark: #0f172a;
+  --color-background-dark: #0B0E14;
   --color-card-light: #ffffff;
-  --color-card-dark: #1e293b;
+  --color-card-dark: #161B22;
   --color-charcoal: #333333;
 
   --font-display: "Fredoka", "Inter", sans-serif;
@@ -50,7 +59,7 @@
 @layer base {
   body {
     font-family: var(--font-body);
-    @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-200;
+    @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-text-main transition-colors duration-200;
   }
 
   h1,
@@ -86,8 +95,8 @@
     border-color: #cecece;
   }
   .dark .card-3d-soft {
-    border-color: #37464f;
-    border-bottom-color: #202f36;
+    border-color: rgba(255, 255, 255, 0.05);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 
   .sidebar-item-playful {
@@ -103,6 +112,11 @@
     border-color: #ffb347;
     border-bottom-width: 4px;
     color: #ff8c00;
+  }
+  .dark .sidebar-item-playful.active {
+    background-color: var(--color-nav-active);
+    color: var(--color-orange-btn);
+    border-color: transparent;
   }
 
   .nav-icon-chunky {
@@ -136,6 +150,9 @@
     background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
+  }
+  .dark .skeleton-shimmer {
+    background: linear-gradient(90deg, #2a2e37 25%, #4b5563 50%, #2a2e37 75%);
   }
 
   .pulse-ring {

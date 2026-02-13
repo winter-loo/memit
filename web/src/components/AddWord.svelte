@@ -107,7 +107,7 @@
       <textarea
         bind:value={explainText}
         oninput={autoResize}
-        class="w-full bg-transparent border-none focus:ring-0 text-xl font-medium resize-none px-0 py-2 placeholder-slate-300 dark:placeholder-slate-600 overflow-hidden min-h-[44px] outline-none shadow-none relative z-10 text-slate-800 dark:text-white break-words whitespace-pre-wrap"
+        class="w-full bg-transparent border-none focus:ring-0 text-xl font-medium resize-none px-0 py-2 placeholder-slate-300 dark:placeholder-white/30 overflow-hidden min-h-[44px] outline-none shadow-none relative z-10 text-slate-800 dark:text-white break-words whitespace-pre-wrap"
         style="background-color: transparent; vertical-align: top; line-height: 1.5;"
         placeholder="Type a word or phrase..."
         rows="1"
@@ -115,12 +115,12 @@
     </div>
 
     <div
-      class="flex items-center justify-between pt-3 border-t-2 border-slate-50 dark:border-slate-800 mt-2"
+      class="flex items-center justify-between pt-3 border-t-2 border-slate-50 dark:border-white/5 mt-2"
     >
       <span
         class="text-xs font-bold uppercase tracking-widest transition-colors {isOverLimit
           ? 'text-danger'
-          : 'text-slate-300'}"
+          : 'text-slate-300 dark:text-text-muted'}"
       >
         {charCount} / {MAX_EXPLAIN_CHARS} chars
       </span>

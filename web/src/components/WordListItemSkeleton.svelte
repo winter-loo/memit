@@ -3,17 +3,17 @@
     <div class="space-y-4 flex-grow">
       <div class="space-y-2">
         <div class="h-8 w-2/5 skeleton-shimmer rounded-lg"></div>
-        <div class="h-4 w-1/4 skeleton-shimmer rounded-lg opacity-60"></div>
+        <div class="h-4 w-1/4 skeleton-shimmer rounded-lg opacity-60 dark:opacity-100"></div>
       </div>
 
       <div class="space-y-2">
         <div class="h-3 w-24 skeleton-shimmer rounded"></div>
-        <div class="h-4 w-full skeleton-shimmer rounded-lg opacity-70"></div>
-        <div class="h-4 w-3/4 skeleton-shimmer rounded-lg opacity-50"></div>
+        <div class="h-4 w-full skeleton-shimmer rounded-lg opacity-70 dark:opacity-100"></div>
+        <div class="h-4 w-3/4 skeleton-shimmer rounded-lg opacity-50 dark:opacity-100"></div>
       </div>
 
       <div
-        class="rounded-2xl p-4 border border-orange-100 dark:border-orange-800/30 bg-orange-50 dark:bg-orange-900/20 space-y-2"
+        class="rounded-2xl p-4 border border-orange-100 dark:border-white/5 bg-orange-50 dark:bg-midnight-navy/40 space-y-2"
       >
         <div class="h-3 w-20 skeleton-shimmer rounded"></div>
         <div class="h-6 w-1/2 skeleton-shimmer rounded-lg"></div>

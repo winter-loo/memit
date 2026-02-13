@@ -174,7 +174,7 @@
       <div
         class="flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-2xl text-primary font-bold text-sm"
       >
-        <span class="material-symbols-outlined text-base fill-1">local_fire_department</span>
+        <span class="material-icons-round text-base">local_fire_department</span>
         {notes.length}
       </div>
     </div>
@@ -186,6 +186,7 @@
       <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
     {/if}
     <div class="space-y-6">
+          <WordListItemSkeleton />
       {#if (loadingAuth || loadingNotes) && notes.length === 0}
         {#each listSkeletonIndexes as idx (idx)}
           <WordListItemSkeleton />

@@ -3,11 +3,11 @@
   <div class="flex-grow">
     <div class="space-y-3 py-1">
       <div class="h-6 w-2/3 skeleton-shimmer rounded-lg"></div>
-      <div class="h-4 w-full skeleton-shimmer rounded-lg opacity-70"></div>
-      <div class="h-4 w-3/4 skeleton-shimmer rounded-lg opacity-50"></div>
+      <div class="h-4 w-full skeleton-shimmer rounded-lg opacity-70 dark:opacity-100"></div>
+      <div class="h-4 w-3/4 skeleton-shimmer rounded-lg opacity-50 dark:opacity-100"></div>
     </div>
     <div
-      class="flex items-center justify-between pt-3 border-t-2 border-slate-50 dark:border-slate-800 mt-3"
+      class="flex items-center justify-between pt-3 border-t-2 border-slate-50 dark:border-white/5 mt-3"
     >
       <div class="h-3 w-24 skeleton-shimmer rounded"></div>
       <div class="h-10 w-28 skeleton-shimmer rounded-2xl"></div>

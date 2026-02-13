@@ -10,7 +10,7 @@
           class="text-2xl font-fredoka font-bold tracking-tight text-slate-800 dark:text-white leading-tight break-words"
         >
           {word.text}
-          <span class="text-[12px] font-medium text-slate-400 align-middle ml-1.5 whitespace-nowrap"
+          <span class="text-[12px] font-medium text-slate-400 dark:text-text-muted align-middle ml-1.5 whitespace-nowrap"
             >{word.addedTime}</span
           >
         </h2>
@@ -20,17 +20,17 @@
       </div>
 
       <div class="space-y-1">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+        <p class="text-[10px] font-bold text-slate-400 dark:text-text-muted uppercase tracking-tight">
           Simple Definition
         </p>
-        <p class="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+        <p class="text-slate-600 dark:text-text-main font-medium leading-relaxed">
           {word.definition}
         </p>
       </div>
 
       {#if word.translation}
         <div
-          class="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-800/30"
+          class="bg-orange-50 dark:bg-midnight-navy/40 rounded-2xl p-4 border border-orange-100 dark:border-white/5"
         >
           <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
             Translation
@@ -48,7 +48,7 @@
           e.stopPropagation();
           onDelete && onDelete();
         }}
-        class="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 border-2 border-slate-100 dark:border-slate-700 hover:text-danger hover:border-danger/30 hover:bg-danger/5 transition-all cursor-pointer"
+        class="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 dark:text-text-muted border-2 border-slate-100 dark:border-white/10 hover:text-danger hover:border-danger/30 hover:bg-danger/5 transition-all cursor-pointer"
       >
         <span class="material-symbols-outlined text-2xl">delete</span>
       </button>
@@ -56,7 +56,7 @@
         onclick={(e) => {
           e.stopPropagation();
         }}
-        class="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 border-2 border-slate-100 dark:border-slate-700 hover:text-accent hover:border-accent/30 hover:bg-accent/5 transition-all cursor-pointer"
+        class="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 dark:text-text-muted border-2 border-slate-100 dark:border-white/10 hover:text-accent hover:border-accent/30 hover:bg-accent/5 transition-all cursor-pointer"
       >
         <span class="material-symbols-outlined text-2xl">volume_up</span>
       </button>
