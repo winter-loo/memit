@@ -37,7 +37,8 @@
   async function handleSignOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
-    window.location.reload();
+    // Go to home; layout will render <Auth/> when session is null.
+    window.location.href = '/';
   }
 </script>
 
