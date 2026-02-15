@@ -77,7 +77,7 @@
 </script>
 
 <div
-  class="sticky top-0 z-40 relative bg-white/95 dark:bg-background-dark/95 backdrop-blur-sm border-b-2 border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center gap-6"
+  class="sticky top-0 z-40 relative bg-white dark:bg-background-dark border-b-2 border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center gap-6"
 >
   <button
     onclick={onClose}
