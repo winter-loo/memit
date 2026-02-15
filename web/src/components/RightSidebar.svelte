@@ -44,7 +44,7 @@
 </script>
 
 <aside
-  class="w-[380px] hidden lg:block p-8 space-y-6 bg-white dark:bg-midnight-navy border-l border-slate-100 dark:border-white/5 sticky top-0 h-screen overflow-y-auto z-20"
+  class="w-[380px] hidden lg:block p-8 space-y-6 dark:bg-midnight-navy border-l border-slate-100 dark:border-white/5 sticky top-0 h-screen overflow-y-auto z-20"
 >
   <div class="space-y-6">
     <!-- Daily Quest Card -->
