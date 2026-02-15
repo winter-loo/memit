@@ -305,7 +305,7 @@
         </div>
         <div class="w-full flex flex-col md:flex-row gap-4 mt-4">
           <div
-            class="flex-1 bg-white dark:bg-[#2d241a] rounded-2xl p-6 border-2 border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-3"
+            class="flex-1 bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] flex flex-col items-center justify-center gap-3"
           >
             <div class="text-center">
               <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Cards</p>
@@ -316,12 +316,12 @@
       </div>
     </main>
     <footer
-      class="w-full bg-white dark:bg-[#221910] border-t-2 border-gray-100 dark:border-gray-800 p-6 z-20"
+      class="w-full bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-20"
     >
       <div class="max-w-[1024px] mx-auto">
         <a
           href={resolve('/')}
-          class="block w-full text-center btn-3d bg-primary text-white rounded-xl text-lg font-bold uppercase tracking-widest py-3.5 hover:brightness-110 active:brightness-95 transition-all"
+          class="block w-full text-center bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-widest py-3.5 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
         >
           Continue
         </a>
@@ -348,19 +348,21 @@
     class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300"
   >
     <header class="w-full max-w-[1024px] mx-auto px-6 py-8 flex items-center gap-6">
-      <a href={resolve('/')} class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+      <a href={resolve('/')} class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
         <span class="material-symbols-outlined text-3xl font-bold">close</span>
       </a>
-      <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+      <div class="flex-1 h-4 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
         <div
           class="h-full bg-primary rounded-full relative transition-all duration-300"
           style="width: {progress}%;"
         >
-          <div class="absolute top-1 left-1 right-1 h-1 bg-white/30 rounded-full"></div>
+          <div class="absolute top-1 left-1 right-1 h-1 bg-white/20 rounded-full"></div>
         </div>
       </div>
       <div class="flex items-center gap-2 text-primary">
-        <span class="material-symbols-outlined font-bold">favorite</span>
+        <span class="material-symbols-outlined font-bold" style="font-variation-settings: 'FILL' 1"
+          >favorite</span
+        >
         <span class="text-xl font-bold">5</span>
       </div>
     </header>
@@ -369,19 +371,19 @@
       <div class="w-full max-w-[600px] flex flex-col items-center gap-10">
         {#if view === 'question'}
           <div class="w-full text-left">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-300">
               Do you know this word?
             </h2>
           </div>
         {/if}
 
         <div
-          class="practice-card w-full bg-white dark:bg-[#2d241a] rounded-xl p-12 flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a140d] border-2 border-gray-200 dark:border-gray-800"
+          class="practice-card w-full bg-white dark:bg-card-dark rounded-[2rem] p-16 flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] border-2 border-gray-100 dark:border-[#333333]"
           class:practice-card--settle={cardMotion === 'settle'}
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
         >
-          <h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 class="text-6xl md:text-2xl font-bold text-gray-900 dark:text-white mb-6">
             {currentNote.fields?.[0]}
           </h1>
 
@@ -391,13 +393,13 @@
                 class="w-full max-w-[520px] flex flex-col gap-2 animate-in fade-in zoom-in duration-300"
               >
                 <span
-                  class="px-4 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full text-sm font-semibold uppercase tracking-wider mx-auto"
+                  class="px-5 py-1.5 bg-gray-100 dark:bg-[#2A2A2A] text-gray-600 dark:text-gray-400 rounded-full text-sm font-semibold uppercase tracking-wider mx-auto"
                   >Translation</span
                 >
                 <div class="inline-flex mx-auto mb-1 text-primary" class:easy-burst={easyBurst}>
-                  <span class="material-symbols-outlined text-3xl fill-1">check_circle</span>
+                  <span class="material-symbols-outlined text-4xl fill-1">check_circle</span>
                 </div>
-                <p class="text-2xl text-primary font-fredoka font-bold mt-2">
+                <p class="text-3xl text-primary font-display font-bold mt-2">
                   {revealData.translation}
                 </p>
               </div>
@@ -410,7 +412,7 @@
                 {:else}
                   {#each visibleRevealItems as item, i (item.id)}
                     <div
-                      class="reveal-card rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-left"
+                      class="reveal-card rounded-2xl border border-gray-200 dark:border-[#333333] px-5 py-4 text-left dark:bg-[#1A1A1A]"
                       class:reveal-card--past={i < visibleRevealItems.length - 1}
                       class:reveal-card--latest={i === visibleRevealItems.length - 1}
                       class:reveal-card--fresh={i === latestRevealIndex}
@@ -420,22 +422,26 @@
                       >
                         {item.label}
                       </p>
-                      <p class="reveal-card-value text-gray-800 dark:text-gray-100">{item.value}</p>
+                      <p
+                        class="reveal-card-value text-xl text-gray-800 dark:text-white font-medium"
+                      >
+                        {item.value}
+                      </p>
                     </div>
                   {/each}
                 {/if}
-                <div class="flex justify-center pt-1">
+                <div class="flex justify-center pt-2">
                   <button
                     onclick={revealMore}
                     disabled={!hasMoreReveal}
-                    class="more-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                    class="more-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-[#333333] text-sm font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white dark:bg-card-dark"
                     class:more-btn--keyflash={moreKeyFlash}
                     class:more-btn--nudge={moreNudge}
                     class:more-btn--lockpulse={moreLockPulse}
                   >
                     <span
                       class="progress-ring"
-                      style={`background: conic-gradient(#f48c25 ${revealProgressPct}%, rgba(148, 163, 184, 0.35) 0%);`}
+                      style={`background: conic-gradient(#ff8c00 ${revealProgressPct}%, rgba(148, 163, 184, 0.2) 0%);`}
                     >
                       <span class="progress-ring-inner"></span>
                     </span>
@@ -443,13 +449,13 @@
                       >{hasMoreReveal ? 'more_horiz' : 'lock'}</span
                     >
                     {hasMoreReveal ? `More (${revealProgressText})` : 'All hints shown'}
-                    <span class="text-[10px] opacity-70">M</span>
+                    <span class="text-[10px] opacity-70 ml-1">M</span>
                   </button>
                 </div>
               </div>
             {/if}
           {:else}
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-3">
               <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">...</p>
             </div>
           {/if}
@@ -458,26 +464,26 @@
     </main>
 
     <footer
-      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#221910] border-t-2 border-gray-200 dark:border-gray-800 p-6 z-10"
+      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-10"
     >
-      <div class="max-w-[1024px] mx-auto flex gap-4 md:gap-6 justify-end items-center">
+      <div class="max-w-[1024px] mx-auto flex gap-4 md:gap-6">
         {#if view === 'question'}
           <button
             onclick={showNotSureAnswer}
-            class="flex-1 h-14 bg-white dark:bg-[#2d241a] border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 rounded-xl text-lg font-bold uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-[0_4px_0_0_#e5e7eb] active:translate-y-1 active:shadow-none cursor-pointer"
+            class="flex-1 h-16 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-2xl text-lg font-bold uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-[#252525] transition-all shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#333333] active:translate-y-1 active:shadow-none cursor-pointer"
           >
             Not Sure
           </button>
           <button
             onclick={showEasyAnswer}
-            class="flex-1 h-14 bg-primary text-white rounded-xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#d67a1f] active:translate-y-1 active:shadow-none cursor-pointer"
+            class="flex-1 h-16 bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
           >
             Easy
           </button>
         {:else}
           <button
             onclick={nextCard}
-            class="w-full md:w-64 h-14 bg-primary text-white rounded-xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#d67a1f] active:translate-y-1 active:shadow-none cursor-pointer"
+            class="w-full h-16 bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
           >
             Continue
           </button>
@@ -533,8 +539,8 @@
   }
   .reveal-card--fresh {
     box-shadow:
-      0 0 0 2px rgba(244, 140, 37, 0.35),
-      0 0 0 8px rgba(244, 140, 37, 0.12);
+      0 0 0 2px rgba(255, 140, 0, 0.35),
+      0 0 0 8px rgba(255, 140, 0, 0.12);
   }
   .more-btn {
     transition:
@@ -543,7 +549,7 @@
       background-color 180ms ease;
   }
   .more-btn--keyflash {
-    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.25);
+    box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.25);
   }
   .more-btn--nudge {
     animation: moreNudge 220ms ease;
@@ -566,7 +572,7 @@
     background: white;
   }
   :global(.dark) .progress-ring-inner {
-    background: #2d241a;
+    background: #1e1e1e;
   }
   .easy-burst {
     animation: easyPop 320ms ease-out;

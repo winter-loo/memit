@@ -28,7 +28,7 @@
 
 @theme {
   --color-primary: #ff8c00;
-  --color-primary-dark: #e67e00;
+  --color-primary-dark: #cc7000;
   --color-primary-light: #ffb347;
   --color-secondary: #ff8c00;
   --color-accent: #1cb0f6;
@@ -36,6 +36,7 @@
   --color-danger: #ff4b4b;
 
   --color-midnight-navy: #0B0E14;
+  --color-midnight-charcoal: #121212;
   --color-charcoal-blue: #161B22;
   --color-navy-lighter: #2A2E37;
   --color-nav-active: #2C1B10;
@@ -44,12 +45,12 @@
   --color-text-muted: #9CA3AF;
 
   --color-background-light: #f9fafb;
-  --color-background-dark: #0B0E14;
+  --color-background-dark: #121212;
   --color-card-light: #ffffff;
-  --color-card-dark: #161B22;
+  --color-card-dark: #1E1E1E;
   --color-charcoal: #333333;
 
-  --font-display: "Fredoka", "Inter", sans-serif;
+  --font-display: "Lexend", "Fredoka", "Inter", sans-serif;
   --font-body: "Inter", sans-serif;
 
   --radius-3xl: 24px;
