@@ -75,23 +75,32 @@
     class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-midnight-navy/95 backdrop-blur-sm border-t border-slate-100 dark:border-white/5 flex justify-around items-center py-3 px-4 z-50"
   >
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
-    <a class={page.url.pathname === '/' ? 'text-primary' : 'text-slate-400 dark:text-text-muted'} href="/">
+    <a
+      class={page.url.pathname === '/' ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
+      href="/"
+    >
       <span class="material-icons-round text-3xl">home</span>
     </a>
     <a
-      class={page.url.pathname.startsWith('/practice') ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
+      class={page.url.pathname.startsWith('/practice')
+        ? 'text-primary'
+        : 'text-slate-400 dark:text-text-muted'}
       href="/practice"
     >
       <span class="material-icons-round text-3xl">psychology</span>
     </a>
     <a
-      class={page.url.pathname.startsWith('/history') ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
+      class={page.url.pathname.startsWith('/history')
+        ? 'text-primary'
+        : 'text-slate-400 dark:text-text-muted'}
       href="/history"
     >
       <span class="material-icons-round text-3xl">history</span>
     </a>
     <a
-      class={page.url.pathname.startsWith('/settings') ? 'text-primary' : 'text-slate-400 dark:text-text-muted'}
+      class={page.url.pathname.startsWith('/settings')
+        ? 'text-primary'
+        : 'text-slate-400 dark:text-text-muted'}
       href="/settings"
     >
       <span class="material-icons-round text-3xl">settings</span>

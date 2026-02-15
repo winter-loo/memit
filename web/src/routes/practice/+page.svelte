@@ -15,9 +15,6 @@
   let answerMode = $state(''); // not_sure, easy
   let revealCount = $state(0);
   let latestRevealIndex = $state(-1);
-  let moreKeyFlash = $state(false);
-  let moreNudge = $state(false);
-  let moreLockPulse = $state(false);
   let easyBurst = $state(false);
   let cardMotion = $state('idle'); // idle, settle, swipe-out, swipe-in
   let advancing = $state(false);
@@ -80,7 +77,7 @@
     if (example) items.push({ id: 'example', label: 'Example', value: example });
     if (synonym) items.push({ id: 'synonym', label: 'Synonym', value: synonym });
     if (simpleDefinition) {
-      items.push({ id: 'simple-definition', label: 'Simple Definition', value: simpleDefinition });
+      items.push({ id: 'simple-definition', label: 'Definition', value: simpleDefinition });
     }
     if (translation) items.push({ id: 'translation', label: 'Translation', value: translation });
     if (etymology) items.push({ id: 'etymology', label: 'Etymology', value: etymology });
@@ -92,9 +89,6 @@
     answerMode = '';
     revealCount = 0;
     latestRevealIndex = -1;
-    moreKeyFlash = false;
-    moreNudge = false;
-    moreLockPulse = false;
     easyBurst = false;
   }
 
@@ -124,10 +118,7 @@
   }
 
   function pulseNoMoreHints() {
-    moreNudge = true;
-    schedule(() => {
-      moreNudge = false;
-    }, 240);
+    // No-op for now, hints are exhausted
   }
 
   onMount(() => {
@@ -135,7 +126,6 @@
 
     /** @param {KeyboardEvent} event */
     const handleKeyDown = (event) => {
-      if (event.key.toLowerCase() !== 'm') return;
       const target = event.target;
       if (
         target instanceof HTMLElement &&
@@ -146,13 +136,31 @@
       ) {
         return;
       }
-      if (view === 'answer' && answerMode === 'not_sure') {
-        moreKeyFlash = true;
-        schedule(() => {
-          moreKeyFlash = false;
-        }, 180);
+
+      const key = event.key;
+      if (key === ' ') {
+        event.preventDefault();
+        if (view === 'question') {
+          showNotSureAnswer();
+        } else if (view === 'answer' && answerMode === 'not_sure') {
+          revealMore();
+        }
+      } else if (key === 'Enter') {
+        event.preventDefault();
+        if (view === 'question') {
+          showEasyAnswer();
+        } else if (view === 'answer') {
+          nextCard();
+        }
+      } else if (key === 'ArrowLeft') {
+        if (view === 'answer' && answerMode === 'not_sure' && revealCount > 1) {
+          revealCount -= 1;
+        }
+      } else if (key === 'ArrowRight') {
+        if (view === 'answer' && answerMode === 'not_sure' && hasMoreReveal) {
+          revealMore();
+        }
       }
-      revealMore();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -206,13 +214,6 @@
     revealCount += 1;
     const freshIndex = revealCount - 1;
     markFreshReveal(freshIndex);
-
-    if (revealCount >= revealItems.length) {
-      moreLockPulse = true;
-      schedule(() => {
-        moreLockPulse = false;
-      }, 300);
-    }
   }
 
   function nextCard() {
@@ -240,14 +241,10 @@
   let currentNote = $derived(notes[currentIndex] || {});
   let revealData = $derived(buildRevealData(currentNote));
   let revealItems = $derived(revealData.items);
-  let visibleRevealItems = $derived(revealItems.slice(0, revealCount));
+  let currentHint = $derived(revealItems[revealCount - 1]);
+  let nextHintLabel = $derived(revealItems[revealCount]?.label);
+  let afterNextHintLabel = $derived(revealItems[revealCount + 1]?.label);
   let hasMoreReveal = $derived(revealCount < revealItems.length);
-  let revealProgressPct = $derived(
-    revealItems.length > 0 ? (revealCount / revealItems.length) * 100 : 100
-  );
-  let revealProgressText = $derived(
-    `${Math.min(revealCount, revealItems.length)}/${revealItems.length}`
-  );
   let progress = $derived(notes.length > 0 ? (currentIndex / notes.length) * 100 : 0);
 </script>
 
@@ -264,10 +261,6 @@
     class="bg-white dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300 relative overflow-hidden"
   >
     <div class="confetti-layer pointer-events-none" aria-hidden="true">
-      <!--
-        delay -1000 to cancel the initial launch delay and `top: -20px`
-        to hide the initial horizontal spreading process
-      -->
       <Confetti
         amount={320}
         size={12}
@@ -280,19 +273,11 @@
         disableForReducedMotion={true}
       />
     </div>
-    <div
-      class="absolute inset-0 pattern-bg pointer-events-none opacity-10"
-      style="background-image: radial-gradient(#f48c25 0.5px, transparent 0.5px); background-size: 40px 40px;"
-    ></div>
     <main class="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
       <div class="w-full max-w-[600px] flex flex-col items-center text-center gap-8">
         <div class="relative mb-4">
-          <div class="relative w-48 h-48 mx-auto z-20">
-            <div
-              class="w-full h-full bg-center bg-no-repeat bg-contain flex items-center justify-center text-6xl"
-            >
-              🎉
-            </div>
+          <div class="relative w-48 h-48 mx-auto z-20 text-6xl flex items-center justify-center">
+            🎉
           </div>
         </div>
         <div class="space-y-2">
@@ -367,125 +352,188 @@
       </div>
     </header>
 
-    <main class="flex-1 flex flex-col items-center justify-center px-6 pb-32">
-      <div class="w-full max-w-[600px] flex flex-col items-center gap-10">
-        {#if view === 'question'}
-          <div class="w-full text-left">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-300">
-              Do you know this word?
-            </h2>
-          </div>
-        {/if}
-
+    <main class="flex-1 flex flex-col items-center justify-start px-6 pb-32 pt-12">
+      <div
+        class="w-full max-w-[550px] flex flex-col gap-8 transition-all duration-700 ease-in-out"
+        style="margin-top: {view === 'question' ? '18vh' : '0'};"
+      >
+        <!-- Word Card -->
         <div
-          class="practice-card w-full bg-white dark:bg-card-dark rounded-[2rem] p-16 flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] border-2 border-gray-100 dark:border-[#333333]"
-          class:practice-card--settle={cardMotion === 'settle'}
+          class="w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-700 ease-in-out"
+          class:p-12={view === 'question'}
+          class:p-6={view === 'answer'}
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
         >
-          <h1 class="text-6xl md:text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <h1
+            class="font-bold text-gray-900 dark:text-white transition-all duration-700 ease-in-out"
+            style="font-size: {view === 'question' ? '2.5rem' : '1.25rem'}; line-height: {view ===
+            'question'
+              ? '3rem'
+              : '1.75rem'};"
+          >
             {currentNote.fields?.[0]}
           </h1>
+        </div>
 
-          {#if view === 'answer'}
-            {#if answerMode === 'easy'}
-              <div
-                class="w-full max-w-[520px] flex flex-col gap-2 animate-in fade-in zoom-in duration-300"
-              >
-                <span
-                  class="px-5 py-1.5 bg-gray-100 dark:bg-[#2A2A2A] text-gray-600 dark:text-gray-400 rounded-full text-sm font-semibold uppercase tracking-wider mx-auto"
-                  >Translation</span
+        <!-- Hint Stack -->
+        {#if view === 'answer'}
+          <div
+            class="relative w-full mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out"
+          >
+            {#if answerMode === 'not_sure'}
+              <!-- Background cards for stack effect -->
+              {#if afterNextHintLabel}
+                <div
+                  class="absolute inset-0 w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-sm stack-card-3 flex items-start justify-center pt-2"
                 >
-                <div class="inline-flex mx-auto mb-1 text-primary" class:easy-burst={easyBurst}>
-                  <span class="material-symbols-outlined text-4xl fill-1">check_circle</span>
+                  <span
+                    class="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em]"
+                    >{afterNextHintLabel}</span
+                  >
                 </div>
-                <p class="text-3xl text-primary font-display font-bold mt-2">
+              {/if}
+              {#if nextHintLabel}
+                <div
+                  class="absolute inset-0 w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-sm stack-card-2 flex items-start justify-center pt-2"
+                >
+                  <span
+                    class="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em]"
+                    >{nextHintLabel}</span
+                  >
+                </div>
+              {/if}
+
+              <!-- Top Card -->
+              <div
+                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-md stack-card-1 p-8 min-h-[320px] transition-all duration-300"
+                class:practice-card--settle={cardMotion === 'settle'}
+              >
+                {#if currentHint}
+                  <div class="flex justify-center mb-6">
+                    <span
+                      class="px-4 py-1 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-[0.2em]"
+                      >{currentHint.label}</span
+                    >
+                  </div>
+                  <div class="space-y-6">
+                    <p
+                      class="text-gray-700 dark:text-gray-300 leading-relaxed text-lg font-medium text-center"
+                    >
+                      {currentHint.value}
+                    </p>
+                  </div>
+                {:else}
+                  <div class="flex items-center justify-center h-full">
+                    <p class="text-gray-400">No hints available.</p>
+                  </div>
+                {/if}
+              </div>
+            {:else if answerMode === 'easy'}
+              <div
+                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-md p-10 flex flex-col items-center justify-center text-center min-h-[320px] animate-in fade-in zoom-in duration-300"
+              >
+                <div class="flex justify-center mb-4">
+                  <span
+                    class="px-4 py-1 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-[0.2em]"
+                    >Translation</span
+                  >
+                </div>
+                <div class="inline-flex mx-auto mb-2 text-primary" class:easy-burst={easyBurst}>
+                  <span class="material-symbols-outlined text-5xl fill-1">check_circle</span>
+                </div>
+                <p class="text-3xl text-primary font-bold mt-2">
                   {revealData.translation}
                 </p>
               </div>
-            {:else}
-              <div
-                class="w-full max-w-[520px] flex flex-col gap-3 animate-in fade-in zoom-in duration-300"
-              >
-                {#if visibleRevealItems.length === 0}
-                  <p class="text-gray-500 dark:text-gray-400">No additional details available.</p>
-                {:else}
-                  {#each visibleRevealItems as item, i (item.id)}
-                    <div
-                      class="reveal-card rounded-2xl border border-gray-200 dark:border-[#333333] px-5 py-4 text-left dark:bg-[#1A1A1A]"
-                      class:reveal-card--past={i < visibleRevealItems.length - 1}
-                      class:reveal-card--latest={i === visibleRevealItems.length - 1}
-                      class:reveal-card--fresh={i === latestRevealIndex}
-                    >
-                      <p
-                        class="reveal-card-label text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1"
-                      >
-                        {item.label}
-                      </p>
-                      <p
-                        class="reveal-card-value text-xl text-gray-800 dark:text-white font-medium"
-                      >
-                        {item.value}
-                      </p>
-                    </div>
-                  {/each}
-                {/if}
-                <div class="flex justify-center pt-2">
-                  <button
-                    onclick={revealMore}
-                    disabled={!hasMoreReveal}
-                    class="more-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-[#333333] text-sm font-bold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed bg-white dark:bg-card-dark"
-                    class:more-btn--keyflash={moreKeyFlash}
-                    class:more-btn--nudge={moreNudge}
-                    class:more-btn--lockpulse={moreLockPulse}
-                  >
-                    <span
-                      class="progress-ring"
-                      style={`background: conic-gradient(#ff8c00 ${revealProgressPct}%, rgba(148, 163, 184, 0.2) 0%);`}
-                    >
-                      <span class="progress-ring-inner"></span>
-                    </span>
-                    <span class="material-symbols-outlined text-base"
-                      >{hasMoreReveal ? 'more_horiz' : 'lock'}</span
-                    >
-                    {hasMoreReveal ? `More (${revealProgressText})` : 'All hints shown'}
-                    <span class="text-[10px] opacity-70 ml-1">M</span>
-                  </button>
-                </div>
-              </div>
             {/if}
-          {:else}
-            <div class="flex flex-col gap-3">
-              <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">...</p>
+          </div>
+        {/if}
+
+        <!-- Mascot / Message -->
+        <div class="flex items-center gap-4 w-full">
+          <div class="relative shrink-0">
+            <div
+              class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-4 border-white dark:border-card-dark shadow-sm"
+            >
+              <div
+                class="relative w-full h-full bg-center bg-no-repeat bg-cover"
+                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAHtbiRDueIDF5dG93OSJIyZKuRIRLlcyxXs6AUZMiU-9aGsAiT0cmyilThWjVnUd8HncuM6tyVQo0HLzla2MLZObHjhQG_-ks2RTmKJdTD0rZeIA5UwJc9x5oGzePsCsuVNFqZipOpeh8c3WeA8hU7qWDmD-p7HYBMr5wbrhjlW-NSPv9a-BNsFgsjJE16Y9R8FB_TcoOWt13bC-mz8kZuaxF2rqTbWIjwFQNVjsse8J7VtVwpyLBaBXTlA9tNt4Ik7tcAzGjO7xU');"
+              ></div>
             </div>
-          {/if}
+          </div>
+          <div
+            class="flex-1 bg-white dark:bg-card-dark p-5 rounded-2xl rounded-bl-none border-2 border-gray-100 dark:border-[#333333] shadow-sm relative"
+          >
+            <p class="text-gray-600 dark:text-gray-300 font-medium">
+              {#if view === 'question'}
+                Try to recall the meaning before looking at hints!
+              {:else if answerMode === 'easy'}
+                Spot on! You really know your stuff.
+              {:else}
+                Each hint gets closer to the answer.
+              {/if}
+            </p>
+            <div
+              class="absolute -left-2 bottom-0 w-4 h-4 bg-white dark:bg-card-dark border-l-2 border-b-2 border-gray-100 dark:border-[#333333] transform rotate-45 -translate-x-1/2"
+            ></div>
+          </div>
         </div>
       </div>
     </main>
 
     <footer
-      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-10"
+      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-4 z-50"
     >
-      <div class="max-w-[1024px] mx-auto flex gap-4 md:gap-6">
+      <div
+        class="max-w-[1024px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4"
+      >
         {#if view === 'question'}
           <button
             onclick={showNotSureAnswer}
-            class="flex-1 h-16 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-2xl text-lg font-bold uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-[#252525] transition-all shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#333333] active:translate-y-1 active:shadow-none cursor-pointer"
+            class="w-full md:w-64 h-12 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
           >
-            Not Sure
+            <span>Not Sure</span>
+            <span
+              class="keycap inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+            >
+              SPACE
+            </span>
           </button>
           <button
             onclick={showEasyAnswer}
-            class="flex-1 h-16 bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
+            class="w-full md:w-64 h-12 bg-primary text-white rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
           >
-            Easy
+            <span>Easy</span>
+            <span
+              class="keycap-orange inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+            >
+              ENTER
+            </span>
           </button>
         {:else}
           <button
-            onclick={nextCard}
-            class="w-full h-16 bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-wide shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
+            onclick={revealMore}
+            disabled={!hasMoreReveal || answerMode === 'easy'}
+            class="w-full md:w-64 h-12 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] active:translate-y-1 active:shadow-none transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Continue
+            <span>Next Hint</span>
+            <span
+              class="keycap inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+            >
+              SPACE
+            </span>
+          </button>
+          <button
+            onclick={nextCard}
+            class="w-full md:w-64 h-12 bg-primary text-white rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+          >
+            <span>Continue</span>
+            <span
+              class="keycap-orange inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+            >
+              ENTER
+            </span>
           </button>
         {/if}
       </div>
@@ -505,87 +553,48 @@
     z-index: 40;
     overflow: hidden;
   }
-  .practice-card {
-    will-change: transform, opacity;
-  }
-  .practice-card--settle {
-    animation: cardSettle 220ms ease-out;
-  }
   .practice-card--swipe-out {
     animation: cardSwipeOut 170ms ease-in forwards;
   }
   .practice-card--swipe-in {
     animation: cardSwipeIn 210ms ease-out;
   }
-  .reveal-card {
-    transition:
-      transform 180ms ease,
-      opacity 180ms ease,
-      box-shadow 220ms ease;
+  .stack-card-1 {
+    z-index: 30;
+    transform: translateY(0);
   }
-  .reveal-card--past {
-    opacity: 0.78;
-    transform: scale(0.985);
+  .stack-card-2 {
+    z-index: 20;
+    transform: translateY(12px) scale(0.97);
   }
-  .reveal-card--past .reveal-card-label {
-    font-size: 9px;
+  .stack-card-3 {
+    z-index: 10;
+    transform: translateY(24px) scale(0.94);
   }
-  .reveal-card--past .reveal-card-value {
-    font-size: 0.95rem;
+
+  .keycap {
+    box-shadow: 0 2px 0px 0px #d1d5db;
   }
-  .reveal-card--latest {
-    transform: scale(1);
-    opacity: 1;
+  :global(.dark) .keycap {
+    box-shadow: 0 2px 0px 0px #1a1a1a;
   }
-  .reveal-card--fresh {
-    box-shadow:
-      0 0 0 2px rgba(255, 140, 0, 0.35),
-      0 0 0 8px rgba(255, 140, 0, 0.12);
+  .keycap-orange {
+    box-shadow: 0 2px 0px 0px #cc7000;
   }
-  .more-btn {
-    transition:
-      transform 140ms ease,
-      box-shadow 180ms ease,
-      background-color 180ms ease;
+
+  .practice-card--settle {
+    animation: cardSettle 220ms ease-out;
   }
-  .more-btn--keyflash {
-    box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.25);
-  }
-  .more-btn--nudge {
-    animation: moreNudge 220ms ease;
-  }
-  .more-btn--lockpulse {
-    animation: lockPulse 300ms ease;
-  }
-  .progress-ring {
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 9999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .progress-ring-inner {
-    width: 0.58rem;
-    height: 0.58rem;
-    border-radius: 9999px;
-    background: white;
-  }
-  :global(.dark) .progress-ring-inner {
-    background: #1e1e1e;
-  }
+
   .easy-burst {
     animation: easyPop 320ms ease-out;
   }
   @keyframes cardSettle {
     0% {
-      transform: scale(1.02);
-    }
-    40% {
-      transform: scale(0.985);
+      transform: translateY(8px) scale(0.98);
     }
     100% {
-      transform: scale(1);
+      transform: translateY(0) scale(1);
     }
   }
   @keyframes cardSwipeOut {
@@ -606,31 +615,6 @@
     100% {
       transform: translateX(0);
       opacity: 1;
-    }
-  }
-  @keyframes moreNudge {
-    0% {
-      transform: translateX(0);
-    }
-    30% {
-      transform: translateX(-2px);
-    }
-    70% {
-      transform: translateX(2px);
-    }
-    100% {
-      transform: translateX(0);
-    }
-  }
-  @keyframes lockPulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.04);
-    }
-    100% {
-      transform: scale(1);
     }
   }
   @keyframes easyPop {

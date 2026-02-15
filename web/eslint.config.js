@@ -67,6 +67,12 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        $state: "readable",
+        $derived: "readable",
+        $effect: "readable",
+        $props: "readable",
+        $inspect: "readable",
+        $host: "readable",
       },
     },
   },

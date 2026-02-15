@@ -58,7 +58,10 @@
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
     <a
       href="/"
-      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page.url.pathname !== '/' ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10' : ''}"
+      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page
+        .url.pathname !== '/'
+        ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10'
+        : ''}"
       class:active={page.url.pathname === '/'}
     >
       <div
@@ -75,7 +78,10 @@
     </a>
     <a
       href="/practice"
-      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page.url.pathname !== '/practice' ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10' : ''}"
+      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page
+        .url.pathname !== '/practice'
+        ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10'
+        : ''}"
       class:active={page.url.pathname === '/practice'}
     >
       <div
@@ -92,7 +98,10 @@
     </a>
     <a
       href="/history"
-      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page.url.pathname !== '/history' ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10' : ''}"
+      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page
+        .url.pathname !== '/history'
+        ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10'
+        : ''}"
       class:active={page.url.pathname === '/history'}
     >
       <div
@@ -109,7 +118,10 @@
     </a>
     <a
       href="/settings"
-      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page.url.pathname !== '/settings' ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10' : ''}"
+      class="sidebar-item-playful flex items-center gap-4 px-5 py-4 rounded-3xl font-fredoka font-bold uppercase tracking-wider text-base {page
+        .url.pathname !== '/settings'
+        ? 'text-slate-500 dark:text-text-muted dark:hover:bg-white/10'
+        : ''}"
       class:active={page.url.pathname === '/settings'}
     >
       <div

@@ -10,7 +10,8 @@
           class="text-2xl font-fredoka font-bold tracking-tight text-slate-800 dark:text-white leading-tight break-words"
         >
           {word.text}
-          <span class="text-[12px] font-medium text-slate-400 dark:text-text-muted align-middle ml-1.5 whitespace-nowrap"
+          <span
+            class="text-[12px] font-medium text-slate-400 dark:text-text-muted align-middle ml-1.5 whitespace-nowrap"
             >{word.addedTime}</span
           >
         </h2>
@@ -20,7 +21,9 @@
       </div>
 
       <div class="space-y-1">
-        <p class="text-[10px] font-bold text-slate-400 dark:text-text-muted uppercase tracking-tight">
+        <p
+          class="text-[10px] font-bold text-slate-400 dark:text-text-muted uppercase tracking-tight"
+        >
           Simple Definition
         </p>
         <p class="text-slate-600 dark:text-text-main font-medium leading-relaxed">
