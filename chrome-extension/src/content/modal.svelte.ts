@@ -505,12 +505,20 @@ async function fetchExplanation(text: string, currentModelId: string) {
           const currentResult = modalProps.result;
           if (!currentResult) return;
 
+          // Capture highlights from the DOM
+          const highlightElements = contentContainer?.querySelectorAll('.highlight');
+          const highlights = Array.from(highlightElements ?? [])
+            .map((el) => el.textContent || '')
+            .filter((t) => t.length > 0);
+          const uniqueHighlights = [...new Set(highlights)];
+
           modalProps.isSaving = true;
           chrome.runtime.sendMessage(
             {
               type: 'SAVE_TO_ANKI',
               word: currentResult.word,
               explanation: currentResult,
+              highlights: uniqueHighlights,
             },
             (saveResponse) => {
               modalProps.isSaving = false;

@@ -192,7 +192,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'ankiAuthPendingTabId',
       ]);
 
-      type PendingSave = { word: string; explanation: unknown; pageUrl?: string };
+      type PendingSave = {
+        word: string;
+        explanation: unknown;
+        pageUrl?: string;
+        highlights?: string[];
+      };
+
       const isPendingSave = (v: unknown): v is PendingSave => {
         if (!v || typeof v !== 'object') return false;
         const obj = v as Record<string, unknown>;
@@ -206,13 +212,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const pending = pendingRaw;
           try {
             // Re-construct the save request locally
-            const rawJson = JSON.stringify(
-              pending.pageUrl
-                ? (pending.explanation && typeof pending.explanation === 'object' && !Array.isArray(pending.explanation)
-                    ? { ...(pending.explanation as Record<string, unknown>), page_url: pending.pageUrl }
-                    : { explanation: pending.explanation, page_url: pending.pageUrl })
-                : pending.explanation
-            );
+            const highlights = pending.highlights || [];
+            const pageUrl = pending.pageUrl;
+
+            const enrichExplanation = (explanation: unknown): unknown => {
+              const base =
+                explanation && typeof explanation === 'object' && !Array.isArray(explanation)
+                  ? (explanation as Record<string, unknown>)
+                  : { explanation };
+
+              const enriched = { ...base, highlights };
+              if (pageUrl) {
+                enriched.page_url = pageUrl;
+              }
+              return enriched;
+            };
+
+            const rawJson = JSON.stringify(enrichExplanation(pending.explanation));
 
             chrome.storage.sync.get(
               ['ankiBackendUrl'],
@@ -275,14 +291,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ? message.pageUrl
         : sender.tab?.url) || '';
 
-    const withPageUrl = (explanation: unknown): unknown => {
+    const highlights: string[] = message.highlights || [];
+
+    const withPageUrlAndHighlights = (explanation: unknown): unknown => {
       if (explanation && typeof explanation === 'object' && !Array.isArray(explanation)) {
-        return { ...(explanation as Record<string, unknown>), page_url: pageUrl };
+        return {
+          ...(explanation as Record<string, unknown>),
+          page_url: pageUrl,
+          highlights,
+        };
       }
-      return { explanation, page_url: pageUrl };
+      return { explanation, page_url: pageUrl, highlights };
     };
 
-    const rawJson = JSON.stringify(withPageUrl(message.explanation));
+    const rawJson = JSON.stringify(withPageUrlAndHighlights(message.explanation));
 
     chrome.storage.sync.get(
       ['ankiBackendUrl', 'ankiAuthUrl'],
@@ -310,6 +332,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   word: message.word,
                   explanation: message.explanation,
                   pageUrl,
+                  highlights,
                   timestamp: Date.now(),
                 },
               });

@@ -7,12 +7,37 @@
 
   let { note, onClose } = $props();
 
-  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, synonyms?: string[], antonyms?: string[], page_url?: string }} ExplainResult */
+  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, synonyms?: string[], antonyms?: string[], page_url?: string, highlights?: string[] }} ExplainResult */
 
   /** @type {ExplainResult | null} */
   let details = $state(null);
   let loading = $state(true);
   let error = $state('');
+
+  /** @param {string} text @param {string[]} [highlights] */
+  function highlightText(text, highlights) {
+    if (!text) return '';
+    if (!highlights || highlights.length === 0) return text;
+
+    // Escape HTML first
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    const sorted = [...highlights].sort((a, b) => b.length - a.length);
+    if (sorted.length === 0) return escaped;
+
+    const pattern = sorted.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const regex = new RegExp(`(${pattern})`, 'gi');
+
+    return escaped.replace(
+      regex,
+      '<span class="bg-primary/20 text-slate-900 dark:text-white rounded px-0.5">$1</span>'
+    );
+  }
 
   /** @param {Record<string, any>} parsed @param {string} word */
   function mapParsedToDetails(parsed, word) {
@@ -23,7 +48,8 @@
       simple_definition: parsed.simple_definition,
       ipa_pronunciation: parsed.ipa_pronunciation,
       etymology: parsed.etymology || parsed.origins,
-      page_url: parsed.page_url || parsed.pageUrl
+      page_url: parsed.page_url || parsed.pageUrl,
+      highlights: parsed.highlights || [],
     };
   }
 
@@ -121,8 +147,12 @@
         <h2 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white mb-2">
           {note.fields?.[0]}
         </h2>
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
-          {details?.simple_definition || note.fields?.[1]}
+          {@html highlightText(
+            details?.simple_definition || note.fields?.[1] || '',
+            details?.highlights
+          )}
         </p>
         <p class="text-2xl font-fredoka font-bold text-primary flex items-center gap-2">
           <span class="material-symbols-outlined text-xl">translate</span>
@@ -168,8 +198,12 @@
             >
             <span class="text-xs text-slate-400">@context_ai</span>
           </div>
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-            {details?.detailed_explanation || 'No detailed explanation available.'}
+            {@html highlightText(
+              details?.detailed_explanation || 'No detailed explanation available.',
+              details?.highlights
+            )}
           </p>
         </div>
       </div>
@@ -197,7 +231,8 @@
               {#each details.examples as example, i (i)}
                 <li class="flex gap-3 text-sm text-slate-600 dark:text-slate-400">
                   <span class="text-primary font-bold">•</span>
-                  <span>{example}</span>
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                  <span>{@html highlightText(example, details.highlights)}</span>
                 </li>
               {/each}
             </ul>
