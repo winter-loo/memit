@@ -352,24 +352,25 @@
       </div>
     </header>
 
-    <main class="flex-1 flex flex-col items-center justify-start px-6 pb-32 pt-12">
+    <main class="flex-1 flex flex-col items-center justify-start px-6 pb-24 pt-4 sm:pt-12">
       <div
-        class="w-full max-w-[550px] flex flex-col gap-8 transition-all duration-700 ease-in-out"
-        style="margin-top: {view === 'question' ? '18vh' : '0'};"
+        class="w-full max-w-[550px] flex flex-col gap-4 sm:gap-8 transition-all duration-700 ease-in-out"
+        style="margin-top: {view === 'question' ? '10vh' : '0'};"
       >
         <!-- Word Card -->
         <div
           class="w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-700 ease-in-out"
-          class:p-12={view === 'question'}
+          class:p-8={view === 'question'}
+          class:sm:p-12={view === 'question'}
           class:p-6={view === 'answer'}
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
         >
           <h1
             class="font-bold text-gray-900 dark:text-white transition-all duration-700 ease-in-out"
-            style="font-size: {view === 'question' ? '2.5rem' : '1.25rem'}; line-height: {view ===
+            style="font-size: {view === 'question' ? '2rem' : '1.25rem'}; line-height: {view ===
             'question'
-              ? '3rem'
+              ? '2.5rem'
               : '1.75rem'};"
           >
             {currentNote.fields?.[0]}
@@ -379,7 +380,7 @@
         <!-- Hint Stack -->
         {#if view === 'answer'}
           <div
-            class="relative w-full mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out"
+            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out"
           >
             {#if answerMode === 'not_sure'}
               <!-- Background cards for stack effect -->
