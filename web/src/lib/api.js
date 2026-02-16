@@ -21,14 +21,19 @@ async function apiFetchWithBearerToken(path, token, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Authorization", "Bearer " + token);
 
-  const res = await fetch(apiUrl(path), { ...options, headers });
+  // Default to no-store to prevent aggressive browser caching of API responses
+  const fetchOptions = { cache: 'no-store', ...options, headers };
+
+  const res = await fetch(apiUrl(path), fetchOptions);
   await throwIfHttpError(res);
   return res;
 }
 
 /** @param {string} path @param {RequestInit} [options] */
 export async function apiFetch(path, options = {}) {
-  const res = await fetch(apiUrl(path), options);
+  // Default to no-store to prevent aggressive browser caching of API responses
+  const fetchOptions = { cache: 'no-store', ...options };
+  const res = await fetch(apiUrl(path), fetchOptions);
   await throwIfHttpError(res);
   return res;
 }
