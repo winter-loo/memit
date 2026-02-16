@@ -246,6 +246,34 @@
   let afterNextHintLabel = $derived(revealItems[revealCount + 1]?.label);
   let hasMoreReveal = $derived(revealCount < revealItems.length);
   let progress = $derived(notes.length > 0 ? (currentIndex / notes.length) * 100 : 0);
+
+  // Swipe detection
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  function handleTouchStart(e) {
+    touchStartX = e.changedTouches[0].screenX;
+  }
+
+  function handleTouchEnd(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }
+
+  function handleSwipe() {
+    const diff = touchEndX - touchStartX;
+    const threshold = 50;
+
+    if (Math.abs(diff) < threshold) return;
+
+    if (diff > 0) {
+      // Swipe Right -> Next Hint (as requested)
+      if (hasMoreReveal) revealMore();
+    } else {
+      // Swipe Left -> Previous Hint (as requested)
+      if (revealCount > 1) revealCount -= 1;
+    }
+  }
 </script>
 
 {#if view === 'loading'}
@@ -380,7 +408,9 @@
         <!-- Hint Stack -->
         {#if view === 'answer'}
           <div
-            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out"
+            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out touch-pan-y"
+            ontouchstart={handleTouchStart}
+            ontouchend={handleTouchEnd}
           >
             {#if answerMode === 'not_sure'}
               <!-- Background cards for stack effect -->
