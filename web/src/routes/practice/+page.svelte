@@ -394,6 +394,7 @@
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
           class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
+          class:will-change-layout={view === 'question' || view === 'answer'}
         >
           <h1
             class="font-bold text-gray-900 dark:text-white transition-all duration-300 ease-in-out"
@@ -593,6 +594,9 @@
   .practice-card--swipe-in {
     animation: cardSwipeIn 210ms ease-out;
     will-change: transform, opacity;
+  }
+  .will-change-layout {
+    will-change: transform, padding, height, width, font-size, line-height;
   }
   .no-transition {
     transition: none !important;
