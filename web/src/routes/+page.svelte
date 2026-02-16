@@ -23,6 +23,7 @@
   let notes = $state([]);
   let loadingNotes = $state(true);
   let loadingAuth = $state(true);
+  let error = $state(''); // Error state for note loading
   /** @type {import('@supabase/supabase-js').SupabaseClient | undefined} */
   let supabase = $state();
   /** @type {import('@supabase/supabase-js').Session | null} */
@@ -43,10 +44,22 @@
 
   async function loadNotes() {
     loadingNotes = true;
+    error = '';
     try {
       notes = /** @type {Note[]} */ (await fetchPreparedNotes(supabase));
     } catch (e) {
       console.error(e);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('HTTP 401') || msg.includes('Not signed in')) {
+        // Token expired/invalid. Force sign out.
+        if (supabase) {
+          await supabase.auth.signOut();
+          session = null;
+        }
+        window.location.reload();
+      } else {
+        error = 'Failed to load notes. Please try again.';
+      }
     } finally {
       loadingNotes = false;
     }
@@ -186,7 +199,14 @@
       <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
     {/if}
     <div class="space-y-6">
-      {#if (loadingAuth || loadingNotes) && notes.length === 0}
+      {#if error}
+        <div class="text-center text-red-500 py-10">
+          <p>{error}</p>
+          <button class="mt-2 text-primary font-bold hover:underline" onclick={loadNotes}
+            >Retry</button
+          >
+        </div>
+      {:else if (loadingAuth || loadingNotes) && notes.length === 0}
         {#each listSkeletonIndexes as idx (idx)}
           <WordListItemSkeleton />
         {/each}
