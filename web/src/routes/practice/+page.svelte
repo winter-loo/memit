@@ -586,9 +586,11 @@
   }
   .practice-card--swipe-out {
     animation: cardSwipeOut 170ms ease-in forwards;
+    will-change: transform, opacity;
   }
   .practice-card--swipe-in {
     animation: cardSwipeIn 210ms ease-out;
+    will-change: transform, opacity;
   }
   .stack-card-1 {
     z-index: 30;
@@ -615,10 +617,12 @@
 
   .practice-card--settle {
     animation: cardSettle 220ms ease-out;
+    will-change: transform;
   }
 
   .easy-burst {
     animation: easyPop 320ms ease-out;
+    will-change: transform, opacity;
   }
   @keyframes cardSettle {
     0% {
