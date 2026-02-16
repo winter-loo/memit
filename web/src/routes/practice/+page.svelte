@@ -354,8 +354,8 @@
 
     <main class="flex-1 flex flex-col items-center justify-start px-6 pb-24 pt-4 sm:pt-12">
       <div
-        class="w-full max-w-[550px] flex flex-col gap-4 sm:gap-8 transition-all duration-700 ease-in-out"
-        style="margin-top: {view === 'question' ? '10vh' : '0'};"
+        class="w-full max-w-[550px] flex flex-col gap-8 sm:gap-8 transition-all duration-700 ease-in-out"
+        style="margin-top: {view === 'question' ? '5vh' : '0'};"
       >
         <!-- Word Card -->
         <div
@@ -368,9 +368,9 @@
         >
           <h1
             class="font-bold text-gray-900 dark:text-white transition-all duration-700 ease-in-out"
-            style="font-size: {view === 'question' ? '2rem' : '1.25rem'}; line-height: {view ===
+            style="font-size: {view === 'question' ? '1.5rem' : '1.25rem'}; line-height: {view ===
             'question'
-              ? '2.5rem'
+              ? '2rem'
               : '1.75rem'};"
           >
             {currentNote.fields?.[0]}
