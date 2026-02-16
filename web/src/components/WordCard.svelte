@@ -20,17 +20,6 @@
         {/if}
       </div>
 
-      <div class="space-y-1">
-        <p
-          class="text-[10px] font-bold text-slate-400 dark:text-text-muted uppercase tracking-tight"
-        >
-          Simple Definition
-        </p>
-        <p class="text-slate-600 dark:text-text-main font-medium leading-relaxed">
-          {word.definition}
-        </p>
-      </div>
-
       {#if word.translation}
         <div
           class="bg-orange-50 dark:bg-midnight-navy/40 rounded-2xl p-4 border border-orange-100 dark:border-white/5"
@@ -43,6 +32,17 @@
           </p>
         </div>
       {/if}
+
+      <div class="space-y-1">
+        <p
+          class="text-[10px] font-bold text-slate-400 dark:text-text-muted uppercase tracking-tight"
+        >
+          Simple Definition
+        </p>
+        <p class="text-slate-600 dark:text-text-main font-medium leading-relaxed">
+          {word.definition}
+        </p>
+      </div>
     </div>
 
     <div class="flex flex-col gap-2 ml-4">
