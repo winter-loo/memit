@@ -1,5 +1,7 @@
 <script>
   let { word, onDelete } = $props();
+
+  let isPhrase = $derived((word.text || '').trim().split(/\s+/).length >= 2);
 </script>
 
 <article class="p-6 card-3d-soft rounded-4xl bg-white dark:bg-card-dark group cursor-pointer">
@@ -15,7 +17,7 @@
             >{word.addedTime}</span
           >
         </h2>
-        {#if word.ipa}
+        {#if word.ipa && !isPhrase}
           <p class="text-primary font-medium text-sm">{word.ipa}</p>
         {/if}
       </div>
