@@ -393,9 +393,11 @@
           class:p-6={view === 'answer'}
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
+          class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
         >
           <h1
             class="font-bold text-gray-900 dark:text-white transition-all duration-700 ease-in-out"
+            class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
             style="font-size: {view === 'question' ? '1.5rem' : '1.25rem'}; line-height: {view ===
             'question'
               ? '2rem'
@@ -591,6 +593,9 @@
   .practice-card--swipe-in {
     animation: cardSwipeIn 210ms ease-out;
     will-change: transform, opacity;
+  }
+  .no-transition {
+    transition: none !important;
   }
   .stack-card-1 {
     z-index: 30;
