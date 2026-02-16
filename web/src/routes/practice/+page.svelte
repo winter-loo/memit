@@ -382,12 +382,12 @@
 
     <main class="flex-1 flex flex-col items-center justify-start px-6 pb-24 pt-4 sm:pt-12">
       <div
-        class="w-full max-w-[550px] flex flex-col gap-8 sm:gap-8 transition-all duration-700 ease-in-out"
+        class="w-full max-w-[550px] flex flex-col gap-8 sm:gap-8 transition-all duration-300 ease-in-out"
         style="margin-top: {view === 'question' ? '5vh' : '0'};"
       >
         <!-- Word Card -->
         <div
-          class="w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-700 ease-in-out"
+          class="w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-300 ease-in-out"
           class:p-8={view === 'question'}
           class:sm:p-12={view === 'question'}
           class:p-6={view === 'answer'}
@@ -396,7 +396,7 @@
           class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
         >
           <h1
-            class="font-bold text-gray-900 dark:text-white transition-all duration-700 ease-in-out"
+            class="font-bold text-gray-900 dark:text-white transition-all duration-300 ease-in-out"
             class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
             style="font-size: {view === 'question' ? '1.5rem' : '1.25rem'}; line-height: {view ===
             'question'
@@ -410,7 +410,7 @@
         <!-- Hint Stack -->
         {#if view === 'answer'}
           <div
-            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out touch-pan-y"
+            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-8 duration-300 ease-out touch-pan-y"
             ontouchstart={handleTouchStart}
             ontouchend={handleTouchEnd}
           >
