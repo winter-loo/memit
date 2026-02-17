@@ -528,7 +528,7 @@
           >
             <span>Not Sure</span>
             <span
-              class="keycap inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+              class="keycap hidden sm:inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
             >
               SPACE
             </span>
@@ -539,7 +539,7 @@
           >
             <span>Easy</span>
             <span
-              class="keycap-orange inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+              class="keycap-orange hidden sm:inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
             >
               ENTER
             </span>
@@ -552,7 +552,7 @@
           >
             <span>Next Hint</span>
             <span
-              class="keycap inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+              class="keycap hidden sm:inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
             >
               SPACE
             </span>
@@ -563,7 +563,7 @@
           >
             <span>Continue</span>
             <span
-              class="keycap-orange inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
+              class="keycap-orange hidden sm:inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
             >
               ENTER
             </span>
