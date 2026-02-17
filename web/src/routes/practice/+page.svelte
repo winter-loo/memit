@@ -382,12 +382,12 @@
 
     <main class="flex-1 flex flex-col items-center justify-start px-6 pb-24 pt-4 sm:pt-12">
       <div
-        class="w-full max-w-[550px] flex flex-col gap-8 sm:gap-8 transition-all duration-300 ease-in-out"
-        style="margin-top: {view === 'question' ? '5vh' : '0'};"
+        class="w-full max-w-[550px] flex flex-col gap-8 sm:gap-8 transition-transform duration-300 ease-in-out will-change-transform"
+        style="transform: translateY({view === 'question' ? '5vh' : '0'});"
       >
         <!-- Word Card -->
         <div
-          class="w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-300 ease-in-out"
+          class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-300 ease-in-out"
           class:p-8={view === 'question'}
           class:sm:p-12={view === 'question'}
           class:p-6={view === 'answer'}
@@ -586,6 +586,12 @@
     justify-content: center;
     z-index: 40;
     overflow: hidden;
+  }
+  .practice-card {
+    /* Helps iOS Safari avoid repainting the whole page during card morph */
+    contain: layout paint;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
   .practice-card--swipe-out {
     animation: cardSwipeOut 170ms ease-in forwards;
