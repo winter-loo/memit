@@ -400,9 +400,8 @@
           >
             <span
               class="inline-block origin-top transition-transform duration-300 ease-out will-change-transform"
-              class:scale-x-100={true}
-              class:scale-y-100={view === 'question'}
-              class:scale-y-90={view === 'answer'}
+              class:scale-100={view === 'question'}
+              class:scale-90={view === 'answer'}
             >
               {currentNote.fields?.[0]}
             </span>
