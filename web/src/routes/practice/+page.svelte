@@ -387,24 +387,23 @@
       >
         <!-- Word Card -->
         <div
-          class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] transition-all duration-300 ease-in-out"
-          class:p-8={view === 'question'}
-          class:sm:p-12={view === 'question'}
-          class:p-6={view === 'answer'}
+          class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] p-8 sm:p-12 origin-top transition-transform duration-300 ease-out will-change-transform"
+          class:scale-100={view === 'question'}
+          class:scale-95={view === 'answer'}
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
           class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
-          class:will-change-layout={view === 'question' || view === 'answer'}
         >
           <h1
-            class="font-bold text-gray-900 dark:text-white transition-all duration-300 ease-in-out"
-            class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
-            style="font-size: {view === 'question' ? '1.5rem' : '1.25rem'}; line-height: {view ===
-            'question'
-              ? '2rem'
-              : '1.75rem'};"
+            class="font-bold text-gray-900 dark:text-white leading-8"
           >
-            {currentNote.fields?.[0]}
+            <span
+              class="inline-block origin-top transition-transform duration-300 ease-out will-change-transform"
+              class:scale-100={view === 'question'}
+              class:scale-90={view === 'answer'}
+            >
+              {currentNote.fields?.[0]}
+            </span>
           </h1>
         </div>
 
@@ -600,9 +599,6 @@
   .practice-card--swipe-in {
     animation: cardSwipeIn 210ms ease-out;
     will-change: transform, opacity;
-  }
-  .will-change-layout {
-    will-change: transform, padding, height, width, font-size, line-height;
   }
   .no-transition {
     transition: none !important;
