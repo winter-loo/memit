@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "project": "memit",
+  "riskRules": {
+    "high": [
+      "chrome-extension/manifest.json",
+      "chrome-extension/src/background.ts",
+      "web/src/lib/api.js",
+      "web/src/lib/supabase.js",
+      "code-factory/**",
+      ".github/workflows/**"
+    ],
+    "medium": [
+      "web/src/routes/**",
+      "web/src/components/**",
+      "chrome-extension/src/content/**",
+      "chrome-extension/src/components/**"
+    ],
+    "low": [
+      "**/*.md",
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "web/src/app.css"
+    ]
+  },
+  "mergePolicy": {
+    "high": {
+      "requiredChecks": [
+        "risk-policy-gate",
+        "build",
+        "test:unit",
+        "harness:evidence",
+        "review:human"
+      ],
+      "description": "Critical infrastructure or security changes. Requires human sign-off."
+    },
+    "medium": {
+      "requiredChecks": [
+        "risk-policy-gate",
+        "build",
+        "test:unit",
+        "harness:evidence",
+        "review:agent"
+      ],
+      "description": "UI or feature logic changes. Requires visual evidence."
+    },
+    "default": {
+      "requiredChecks": [
+        "risk-policy-gate",
+        "build",
+        "test:unit",
+        "review:agent"
+      ],
+      "description": "Standard changes. Automated review sufficient."
+    }
+  }
+}

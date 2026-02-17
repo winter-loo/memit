@@ -1,0 +1,24 @@
+{
+  "name": "memit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winter-loo/memit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/winter-loo/memit/issues"
+  },
+  "homepage": "https://github.com/winter-loo/memit#readme",
+  "dependencies": {
+    "minimatch": "^10.2.0"
+  }
+}
