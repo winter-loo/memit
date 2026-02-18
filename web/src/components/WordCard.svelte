@@ -67,8 +67,12 @@
     const step = 6; // lower => more particles
     for (let y = 0; y < h; y += step) {
       for (let x = 0; x < w; x += step) {
-        const idx = (y * w + x) * 4 + 3;
-        if (data[idx] > 20) {
+        const base = (y * w + x) * 4;
+        const a = data[base + 3];
+        if (a > 20) {
+          const r = data[base];
+          const g = data[base + 1];
+          const b = data[base + 2];
           const angle = (Math.random() * Math.PI) / 1.1 - Math.PI / 2.2;
           const speed = 0.6 + Math.random() * 1.8;
           particles.push({
@@ -76,7 +80,10 @@
             y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed - (0.4 + Math.random() * 0.8),
-            a: 1
+            a: 1,
+            r,
+            g,
+            b
           });
         }
       }
@@ -102,7 +109,6 @@
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     ctx.scale(dpr, dpr);
-    ctx.fillStyle = '#ffffff';
 
     const textEls = rootEl.querySelectorAll('[data-dissolve]');
     for (const node of textEls) {
@@ -112,6 +118,7 @@
       const y = r.top - rect.top;
       const maxWidth = r.width;
       ctx.font = fontString(node);
+      ctx.fillStyle = getComputedStyle(node).color || '#000';
       const lineHeight = safeLineHeight(node);
       drawWrappedText(
         ctx,
@@ -148,7 +155,7 @@
         p.vy += 0.02; // gravity
         p.a = fade;
 
-        pctx.fillStyle = `rgba(255,255,255,${p.a})`;
+        pctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a})`;
         pctx.fillRect(p.x, p.y, 2, 2);
       }
 
