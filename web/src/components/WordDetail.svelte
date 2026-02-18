@@ -14,6 +14,33 @@
   let loading = $state(true);
   let error = $state('');
 
+  // Swipe detection
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  /** @param {TouchEvent} e */
+  function handleTouchStart(e) {
+    touchStartX = e.changedTouches[0].screenX;
+  }
+
+  /** @param {TouchEvent} e */
+  function handleTouchEnd(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }
+
+  function handleSwipe() {
+    const diff = touchEndX - touchStartX;
+    const threshold = 50;
+
+    if (Math.abs(diff) < threshold) return;
+
+    if (diff > 0) {
+      // Swipe Right -> Go Back
+      onClose();
+    }
+  }
+
   /** @param {string} text @param {string[]} [highlights] */
   function highlightText(text, highlights) {
     if (!text) return '';
@@ -106,6 +133,10 @@
 
 <div
   class="sticky top-0 z-40 relative bg-slate-50 dark:bg-midnight-navy border-b-2 border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center gap-6"
+  ontouchstart={handleTouchStart}
+  ontouchend={handleTouchEnd}
+  role="region"
+  aria-label="Word Detail View"
 >
   <button
     onclick={onClose}
