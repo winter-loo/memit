@@ -56,6 +56,100 @@
     return '';
   }
 
+  /** @param {string} key */
+  function titleizeKey(key) {
+    return String(key)
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /** @param {number} secs */
+  function formatDuration(secs) {
+    if (!Number.isFinite(secs)) return '—';
+    const s = Math.max(0, Math.floor(secs));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const r = s % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${r}s`;
+    return `${r}s`;
+  }
+
+  /** @param {string} key @param {any} value @returns {string} */
+  function formatTimingValue(key, value) {
+    if (value === null || value === undefined) return '—';
+
+    // booleans
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+
+    // numbers
+    if (typeof value === 'number') {
+      const k = String(key).toLowerCase();
+      // timestamps
+      if (k.includes('at') || k.includes('time') || k.includes('timestamp')) {
+        // heuristics: ms vs sec
+        const ms = value > 2e12 ? value : value > 2e9 ? value * 1000 : null;
+        if (ms) return new Date(ms).toLocaleString();
+      }
+      // durations
+      if (k.includes('sec') || k.includes('secs') || k.includes('seconds')) {
+        return formatDuration(value);
+      }
+      if (k.includes('ms') || k.includes('millis')) {
+        return formatDuration(value / 1000);
+      }
+      // percentages
+      if (k.includes('pct') || k.includes('percent')) {
+        return `${value}%`;
+      }
+      // plain count
+      return value.toLocaleString();
+    }
+
+    // strings
+    if (typeof value === 'string') return value;
+
+    // arrays
+    if (Array.isArray(value)) {
+      if (value.length === 0) return '—';
+      if (value.length <= 3) return value.map(String).join(', ');
+      return `${value.length} items`;
+    }
+
+    // objects
+    if (typeof value === 'object') {
+      try {
+        const keys = Object.keys(value);
+        if (keys.length === 0) return '—';
+        if (keys.length <= 3) {
+          return keys
+            .map((k) => `${titleizeKey(k)}: ${formatTimingValue(k, value[k])}`)
+            .join(' · ');
+        }
+        return `${keys.length} fields`;
+      } catch {
+        return '—';
+      }
+    }
+
+    return String(value);
+  }
+
+  /** @param {string} key @returns {string} */
+  function timingIcon(key) {
+    const k = String(key).toLowerCase();
+    if (k.includes('day')) return 'calendar_today';
+    if (k.includes('learn')) return 'school';
+    if (k.includes('review') || k.includes('rev')) return 'refresh';
+    if (k.includes('new')) return 'fiber_new';
+    if (k.includes('due')) return 'pending_actions';
+    if (k.includes('next')) return 'schedule';
+    return 'schedule';
+  }
+
   /** @param {Note} note */
   function buildRevealData(note) {
     const rawBack = note?.fields?.[1] || '';
@@ -283,6 +377,20 @@
 
   let currentNote = $derived(currentCardData?.note || { id: -1, fields: [] });
   let revealData = $derived(buildRevealData(currentNote));
+
+  let timingItems = $derived.by(() => {
+    const timing = reviewStats?.timing;
+    if (!timing || typeof timing !== 'object') return [];
+    return Object.entries(timing)
+      .filter(([, v]) => v !== null && v !== undefined)
+      .map(([key, value]) => ({
+        key,
+        label: titleizeKey(key),
+        icon: timingIcon(key),
+        valueText: formatTimingValue(key, value)
+      }))
+      .filter((item) => item.valueText !== '—');
+  });
   let revealItems = $derived(revealData.items);
   let currentHint = $derived(revealItems[revealCount - 1]);
   let nextHintLabel = $derived(revealItems[revealCount]?.label);
@@ -362,19 +470,24 @@
           >
             <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Scheduler timing</p>
 
-            {#if reviewStats?.timing && Object.keys(reviewStats.timing).length > 0}
+            {#if timingItems.length > 0}
               <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {#each Object.entries(reviewStats.timing) as [key, value] (key)}
+                {#each timingItems as item (item.key)}
                   <div
                     class="rounded-xl bg-slate-50 dark:bg-[#252525] px-3 py-2 border border-slate-200 dark:border-gray-700"
                   >
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      {key}
-                    </p>
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[16px] text-slate-400"
+                        >{item.icon}</span
+                      >
+                      <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        {item.label}
+                      </p>
+                    </div>
                     <p
                       class="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 break-words"
                     >
-                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                      {item.valueText}
                     </p>
                   </div>
                 {/each}
