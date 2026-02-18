@@ -110,7 +110,21 @@
     }
 
     // strings
-    if (typeof value === 'string') return value;
+    if (typeof value === 'string') {
+      const k = String(key).toLowerCase();
+      // timestamps as strings ("1700000000", "1700000000000", or ISO)
+      if (k.includes('at') || k.includes('time') || k.includes('timestamp')) {
+        const trimmed = value.trim();
+        if (/^\d+$/.test(trimmed)) {
+          const num = Number(trimmed);
+          const ms = num > 2e12 ? num : num > 2e9 ? num * 1000 : null;
+          if (ms) return new Date(ms).toLocaleString();
+        }
+        const parsed = Date.parse(trimmed);
+        if (!Number.isNaN(parsed)) return new Date(parsed).toLocaleString();
+      }
+      return value;
+    }
 
     // arrays
     if (Array.isArray(value)) {
