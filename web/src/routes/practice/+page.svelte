@@ -1,7 +1,6 @@
 <script>
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { Confetti } from 'svelte-confetti';
   import { parseNoteBack } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
   import { apiFetchAuthed } from '$lib/api';
@@ -13,6 +12,7 @@
     /** @type {{ card_id: number, note: Note, queue?: number } | null} */ (null)
   );
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
+  let reviewStats = $state(/** @type {{ timing: any, studied: any } | null} */ (null)); // loaded when queue is empty
   let answerMode = $state(''); // not_sure, easy
   let revealCount = $state(0);
   let latestRevealIndex = $state(-1);
@@ -93,6 +93,21 @@
     easyBurst = false;
   }
 
+  async function loadReviewStats() {
+    try {
+      const [timingRes, studiedRes] = await Promise.all([
+        apiFetchAuthed(supabase, '/api/card/sched_timing_today'),
+        apiFetchAuthed(supabase, '/api/note/studied_today')
+      ]);
+      const timing = await timingRes.json().catch(() => null);
+      const studied = await studiedRes.json().catch(() => null);
+      reviewStats = { timing, studied };
+    } catch (e) {
+      console.error(e);
+      reviewStats = null;
+    }
+  }
+
   async function loadNextCard() {
     try {
       // 1. Fetch the next queued card
@@ -119,10 +134,12 @@
         // Empty queue
         currentCardData = null;
         view = 'complete';
+        void loadReviewStats();
       }
     } catch (e) {
       console.error(e);
       view = 'complete'; // Fail safe
+      void loadReviewStats();
     }
     resetCardAnswerState();
     cardMotion = 'idle';
@@ -316,46 +333,43 @@
   <div
     class="bg-white dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300 relative overflow-hidden"
   >
-    <div class="confetti-layer pointer-events-none" aria-hidden="true">
-      <Confetti
-        amount={320}
-        size={12}
-        duration={5200}
-        delay={[-1000, 2000]}
-        y={[0, 0.1]}
-        x={[-5, 5]}
-        fallDistance="135vh"
-        colorArray={['#F48C25', '#FFB347', '#38BDF8', '#22C55E', '#F43F5E', '#FDE047']}
-        disableForReducedMotion={true}
-      />
-    </div>
     <main class="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
-      <div class="w-full max-w-[600px] flex flex-col items-center text-center gap-8">
-        <div class="relative mb-4">
-          <div class="relative w-48 h-48 mx-auto z-20 text-6xl flex items-center justify-center">
-            🎉
+      <div class="w-full max-w-[640px] flex flex-col items-center text-center gap-8">
+        <div class="relative mb-2">
+          <div class="relative w-40 h-40 mx-auto z-20 text-6xl flex items-center justify-center">
+            ✅
           </div>
         </div>
         <div class="space-y-2">
-          <h1 class="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-            Session Complete!
-          </h1>
+          <h1 class="text-4xl md:text-5xl font-bold text-primary tracking-tight">All caught up</h1>
           <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">
-            You're making great progress!
+            No cards due right now.
           </p>
         </div>
-        <div class="w-full flex flex-col md:flex-row gap-4 mt-4">
+
+        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
           <div
-            class="flex-1 bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] flex flex-col items-center justify-center gap-3"
+            class="bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left"
           >
-            <div class="text-center">
-              <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Cards</p>
-              <p class="text-lg font-bold text-gray-800 dark:text-white">Done</p>
-            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Studied today</p>
+            <p class="mt-2 text-lg font-bold text-gray-800 dark:text-white">
+              {reviewStats?.studied?.msg ?? '—'}
+            </p>
+          </div>
+
+          <div
+            class="bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left"
+          >
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Scheduler timing</p>
+            <pre
+              class="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words">
+{JSON.stringify(reviewStats?.timing ?? {}, null, 2)}
+            </pre>
           </div>
         </div>
       </div>
     </main>
+
     <footer
       class="w-full bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-20"
     >
@@ -364,7 +378,7 @@
           href={resolve('/')}
           class="block w-full text-center bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-widest py-3.5 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
         >
-          Continue
+          Back
         </a>
       </div>
     </footer>
@@ -416,19 +430,12 @@
         <!-- Word Card -->
         <div
           class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] p-8 sm:p-12 origin-top transition-transform duration-300 ease-out will-change-transform"
-          class:scale-x-100={true}
-          class:scale-y-100={view === 'question'}
-          class:scale-y-80={view === 'answer'}
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
           class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
         >
           <h1 class="font-bold text-gray-900 dark:text-white leading-8">
-            <span
-              class="inline-block origin-top transition-transform duration-300 ease-out will-change-transform"
-              class:scale-100={view === 'question'}
-              class:scale-90={view === 'answer'}
-            >
+            <span class="inline-block origin-top">
               {currentNote.fields?.[0]}
             </span>
           </h1>
@@ -604,17 +611,6 @@
 {/if}
 
 <style>
-  .confetti-layer {
-    position: fixed;
-    top: -20px;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    z-index: 40;
-    overflow: hidden;
-  }
   .practice-card {
     /* Helps iOS Safari avoid repainting the whole page during card morph */
     contain: layout paint;
