@@ -92,7 +92,9 @@
   }
 
   async function startDissolve() {
-    if (!rootEl || !canvasEl) return;
+    if (!rootEl) return;
+    // ensure canvas is mounted
+    if (!canvasEl) return;
 
     const rect = rootEl.getBoundingClientRect();
     const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -138,8 +140,8 @@
 
     const particles = createParticlesFromCanvas(w, h);
 
-    // Animate
-    dissolving = true;
+    // Animate (dissolving already true)
+
     const duration = 520;
     const start = performance.now();
 
@@ -185,6 +187,10 @@
         deleting = false;
         return;
       }
+      // mount canvas + hide text before sampling/animating
+      dissolving = true;
+      // allow DOM to update so bind:this is set
+      await new Promise((r) => setTimeout(r, 0));
       await startDissolve();
     } catch {
       deleting = false;
@@ -196,13 +202,12 @@
   bind:this={rootEl}
   class="relative p-6 card-3d-soft rounded-4xl bg-white dark:bg-card-dark group cursor-pointer"
 >
-  {#if dissolving}
-    <canvas
-      bind:this={canvasEl}
-      class="absolute inset-0 w-full h-full pointer-events-none"
-      style="mix-blend-mode: normal;"
-    ></canvas>
-  {/if}
+  <canvas
+    bind:this={canvasEl}
+    class="absolute inset-0 w-full h-full pointer-events-none"
+    class:opacity-0={!dissolving}
+    style="mix-blend-mode: normal;"
+  ></canvas>
 
   <div class="flex items-start justify-between">
     <div class="space-y-4 flex-grow" class:opacity-0={dissolving}>
