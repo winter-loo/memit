@@ -201,6 +201,9 @@
   });
 
   function showNotSureAnswer() {
+    // Answer HARD (2) immediately
+    apiFetchAuthed(supabase, `/api/card/answer/2`, { method: 'POST' }).catch(console.error);
+
     answerMode = 'not_sure';
     revealCount = revealItems.length > 0 ? 1 : 0;
     if (revealCount > 0) markFreshReveal(0);
@@ -212,6 +215,9 @@
   }
 
   function showEasyAnswer() {
+    // Answer GOOD (3) immediately
+    apiFetchAuthed(supabase, `/api/card/answer/3`, { method: 'POST' }).catch(console.error);
+
     answerMode = 'easy';
     revealCount = 0;
     latestRevealIndex = -1;
@@ -240,18 +246,11 @@
     if (advancing) return;
 
     advancing = true;
-
-    // Submit answer
-    const ease = answerMode === 'easy' ? 4 : 2; // Easy=4 (Easy), NotSure=2 (Hard)
-    // Fire and forget, or await? Safest to fire, we assume success or consistency fix later
-    apiFetchAuthed(supabase, `/api/card/answer/${ease}`, { method: 'POST' }).catch(console.error);
-
     cardMotion = 'swipe-out';
     schedule(async () => {
-      await loadNextCard(); // Fetch next
+      await loadNextCard();
 
-      // Animation reset is handled in loadNextCard -> view setting
-      // But we need to handle the transition logic here
+      // If we have a new card, animate in. Otherwise completion view handles itself.
       if (currentCardData) {
         cardMotion = 'swipe-in';
         schedule(() => {
