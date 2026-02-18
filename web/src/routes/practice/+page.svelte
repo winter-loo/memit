@@ -91,7 +91,7 @@
       // timestamps
       if (k.includes('at') || k.includes('time') || k.includes('timestamp')) {
         // heuristics: ms vs sec
-        const ms = value > 2e12 ? value : value > 2e9 ? value * 1000 : null;
+        const ms = value > 2e12 ? value : value > 1e9 ? value * 1000 : null;
         if (ms) return new Date(ms).toLocaleString();
       }
       // durations
@@ -117,7 +117,7 @@
         const trimmed = value.trim();
         if (/^\d+$/.test(trimmed)) {
           const num = Number(trimmed);
-          const ms = num > 2e12 ? num : num > 2e9 ? num * 1000 : null;
+          const ms = num > 2e12 ? num : num > 1e9 ? num * 1000 : null;
           if (ms) return new Date(ms).toLocaleString();
         }
         const parsed = Date.parse(trimmed);
