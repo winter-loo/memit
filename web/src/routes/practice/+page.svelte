@@ -108,11 +108,6 @@
     }
   }
 
-  async function retryPractice() {
-    view = 'loading';
-    await loadNextCard();
-  }
-
   async function loadNextCard() {
     try {
       // 1. Fetch the next queued card
@@ -366,10 +361,27 @@
             class="bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left"
           >
             <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Scheduler timing</p>
-            <pre
-              class="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words">
-{JSON.stringify(reviewStats?.timing ?? {}, null, 2)}
-            </pre>
+
+            {#if reviewStats?.timing && Object.keys(reviewStats.timing).length > 0}
+              <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {#each Object.entries(reviewStats.timing) as [key, value] (key)}
+                  <div
+                    class="rounded-xl bg-slate-50 dark:bg-[#252525] px-3 py-2 border border-slate-200 dark:border-gray-700"
+                  >
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      {key}
+                    </p>
+                    <p
+                      class="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 break-words"
+                    >
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </p>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">—</p>
+            {/if}
           </div>
         </div>
       </div>
@@ -379,13 +391,12 @@
       class="w-full bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-20"
     >
       <div class="max-w-[1024px] mx-auto">
-        <button
-          type="button"
-          onclick={retryPractice}
+        <a
+          href={resolve('/')}
           class="block w-full text-center bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-widest py-3.5 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
         >
-          Retry
-        </button>
+          Continue
+        </a>
       </div>
     </footer>
   </div>
