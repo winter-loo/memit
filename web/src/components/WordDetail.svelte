@@ -49,7 +49,7 @@
       ipa_pronunciation: parsed.ipa_pronunciation,
       etymology: parsed.etymology || parsed.origins,
       page_url: parsed.page_url || parsed.pageUrl,
-      highlights: parsed.highlights || [],
+      highlights: parsed.highlights || []
     };
   }
 
@@ -102,6 +102,8 @@
   });
 </script>
 
+<!-- eslint-disable svelte/no-at-html-tags -->
+
 <div
   class="sticky top-0 z-40 relative bg-slate-50 dark:bg-midnight-navy border-b-2 border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center gap-6"
 >
@@ -147,8 +149,8 @@
         <h2 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white mb-2">
           {note.fields?.[0]}
         </h2>
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html highlightText(
             details?.simple_definition || note.fields?.[1] || '',
             details?.highlights
@@ -198,8 +200,8 @@
             >
             <span class="text-xs text-slate-400">@context_ai</span>
           </div>
-          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html highlightText(
               details?.detailed_explanation || 'No detailed explanation available.',
               details?.highlights

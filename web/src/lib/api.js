@@ -22,7 +22,8 @@ async function apiFetchWithBearerToken(path, token, options = {}) {
   headers.set("Authorization", "Bearer " + token);
 
   // Default to no-store to prevent aggressive browser caching of API responses
-  const fetchOptions = { cache: 'no-store', ...options, headers };
+  /** @type {RequestInit} */
+  const fetchOptions = { cache: "no-store", ...options, headers };
 
   const res = await fetch(apiUrl(path), fetchOptions);
   await throwIfHttpError(res);
@@ -32,7 +33,8 @@ async function apiFetchWithBearerToken(path, token, options = {}) {
 /** @param {string} path @param {RequestInit} [options] */
 export async function apiFetch(path, options = {}) {
   // Default to no-store to prevent aggressive browser caching of API responses
-  const fetchOptions = { cache: 'no-store', ...options };
+  /** @type {RequestInit} */
+  const fetchOptions = { cache: "no-store", ...options };
   const res = await fetch(apiUrl(path), fetchOptions);
   await throwIfHttpError(res);
   return res;

@@ -2,15 +2,16 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { Confetti } from 'svelte-confetti';
-  import { fetchNotes, parseNoteBack } from '$lib/notes';
+  import { parseNoteBack } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
+  import { apiFetchAuthed } from '$lib/api';
 
   /** @typedef {{ id: string | number, fields?: string[] }} Note */
   /** @typedef {{ id: string, label: string, value: string }} RevealItem */
 
-  /** @type {Note[]} */
-  let notes = $state([]);
-  let currentIndex = $state(0);
+  let currentCardData = $state(
+    /** @type {{ card_id: number, note: Note, queue?: number } | null} */ (null)
+  );
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
   let answerMode = $state(''); // not_sure, easy
   let revealCount = $state(0);
@@ -92,21 +93,40 @@
     easyBurst = false;
   }
 
-  async function loadNotes() {
+  async function loadNextCard() {
     try {
-      notes = await fetchNotes(supabase);
-      currentIndex = 0;
-      resetCardAnswerState();
-      cardMotion = 'idle';
-      advancing = false;
-      if (notes.length > 0) {
+      // 1. Fetch the next queued card
+      const cardRes = await apiFetchAuthed(supabase, '/api/card/next');
+      const cardData = await cardRes.json();
+
+      // Protobuf JSON uses camelCase by default (cards, noteId)
+      if (cardData.cards && cardData.cards.length > 0) {
+        const qcard = cardData.cards[0];
+        const card = qcard.card;
+        const noteId = card.noteId || card.note_id; // handle camel or snake just in case
+
+        // 2. Fetch the note content for that card
+        const noteRes = await apiFetchAuthed(supabase, `/api/note/@${noteId}`);
+        const noteData = await noteRes.json();
+
+        currentCardData = {
+          card_id: card.id,
+          note: noteData,
+          queue: qcard.queue
+        };
         view = 'question';
       } else {
+        // Empty queue
+        currentCardData = null;
         view = 'complete';
       }
     } catch (e) {
       console.error(e);
+      view = 'complete'; // Fail safe
     }
+    resetCardAnswerState();
+    cardMotion = 'idle';
+    advancing = false;
   }
 
   /** @param {number} index */
@@ -168,7 +188,7 @@
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (data?.session?.user) {
-        await loadNotes();
+        await loadNextCard();
       } else {
         view = 'unauthenticated';
       }
@@ -218,43 +238,52 @@
 
   function nextCard() {
     if (advancing) return;
-    if (currentIndex >= notes.length - 1) {
-      view = 'complete';
-      return;
-    }
 
     advancing = true;
-    cardMotion = 'swipe-out';
-    schedule(() => {
-      currentIndex++;
-      resetCardAnswerState();
-      view = 'question';
-      cardMotion = 'swipe-in';
 
-      schedule(() => {
-        cardMotion = 'idle';
+    // Submit answer
+    const ease = answerMode === 'easy' ? 4 : 2; // Easy=4 (Easy), NotSure=2 (Hard)
+    // Fire and forget, or await? Safest to fire, we assume success or consistency fix later
+    apiFetchAuthed(supabase, `/api/card/answer/${ease}`, { method: 'POST' }).catch(console.error);
+
+    cardMotion = 'swipe-out';
+    schedule(async () => {
+      await loadNextCard(); // Fetch next
+
+      // Animation reset is handled in loadNextCard -> view setting
+      // But we need to handle the transition logic here
+      if (currentCardData) {
+        cardMotion = 'swipe-in';
+        schedule(() => {
+          cardMotion = 'idle';
+          advancing = false;
+        }, 210);
+      } else {
+        view = 'complete';
         advancing = false;
-      }, 210);
+      }
     }, 170);
   }
 
-  let currentNote = $derived(notes[currentIndex] || {});
+  let currentNote = $derived(currentCardData?.note || { id: -1, fields: [] });
   let revealData = $derived(buildRevealData(currentNote));
   let revealItems = $derived(revealData.items);
   let currentHint = $derived(revealItems[revealCount - 1]);
   let nextHintLabel = $derived(revealItems[revealCount]?.label);
   let afterNextHintLabel = $derived(revealItems[revealCount + 1]?.label);
   let hasMoreReveal = $derived(revealCount < revealItems.length);
-  let progress = $derived(notes.length > 0 ? (currentIndex / notes.length) * 100 : 0);
+  let progress = $derived(0);
 
   // Swipe detection
   let touchStartX = 0;
   let touchEndX = 0;
 
+  /** @param {TouchEvent} e */
   function handleTouchStart(e) {
     touchStartX = e.changedTouches[0].screenX;
   }
 
+  /** @param {TouchEvent} e */
   function handleTouchEnd(e) {
     touchEndX = e.changedTouches[0].screenX;
     handleSwipe();
@@ -322,7 +351,7 @@
           >
             <div class="text-center">
               <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Cards</p>
-              <p class="text-lg font-bold text-gray-800 dark:text-white">{notes.length}</p>
+              <p class="text-lg font-bold text-gray-800 dark:text-white">Done</p>
             </div>
           </div>
         </div>
@@ -395,9 +424,7 @@
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
           class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
         >
-          <h1
-            class="font-bold text-gray-900 dark:text-white leading-8"
-          >
+          <h1 class="font-bold text-gray-900 dark:text-white leading-8">
             <span
               class="inline-block origin-top transition-transform duration-300 ease-out will-change-transform"
               class:scale-100={view === 'question'}
