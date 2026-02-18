@@ -441,6 +441,8 @@
             class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-8 duration-300 ease-out touch-pan-y"
             ontouchstart={handleTouchStart}
             ontouchend={handleTouchEnd}
+            role="region"
+            aria-label="Card Swipe Area"
           >
             {#if answerMode === 'not_sure'}
               <!-- Background cards for stack effect -->
