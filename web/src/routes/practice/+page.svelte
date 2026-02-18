@@ -108,6 +108,11 @@
     }
   }
 
+  async function retryPractice() {
+    view = 'loading';
+    await loadNextCard();
+  }
+
   async function loadNextCard() {
     try {
       // 1. Fetch the next queued card
@@ -374,12 +379,13 @@
       class="w-full bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-20"
     >
       <div class="max-w-[1024px] mx-auto">
-        <a
-          href={resolve('/')}
+        <button
+          type="button"
+          onclick={retryPractice}
           class="block w-full text-center bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-widest py-3.5 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
         >
-          Back
-        </a>
+          Retry
+        </button>
       </div>
     </footer>
   </div>
