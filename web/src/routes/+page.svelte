@@ -67,17 +67,23 @@
 
   /** @param {string | number} noteId */
   async function deleteNote(noteId) {
-    if (!noteId) return;
-    if (!confirm('Delete this note?')) return;
+    if (!noteId) return false;
+    if (!confirm('Delete this note?')) return false;
     try {
       await apiFetchAuthed(supabase, `/api/note/delete/@${noteId}`, {
         method: 'POST'
       });
-      await loadNotes();
       if (selectedNote?.id === noteId) selectedNote = null;
+      return true;
     } catch (e) {
       console.error(e);
+      return false;
     }
+  }
+
+  /** @param {string | number} noteId */
+  function removeNoteFromList(noteId) {
+    notes = notes.filter((n) => n.id !== noteId);
   }
 
   /** @param {string} text */
@@ -229,6 +235,7 @@
                   ipa: note._parsed?.ipa_pronunciation || ''
                 }}
                 onDelete={() => deleteNote(note.id)}
+                onRemoved={() => removeNoteFromList(note.id)}
               />
             </div>
           {/if}
