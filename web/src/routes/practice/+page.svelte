@@ -589,6 +589,9 @@
         {#if view === 'answer'}
           <div
             class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-8 duration-300 ease-out touch-pan-y"
+            class:practice-card--swipe-out={cardMotion === 'swipe-out'}
+            class:practice-card--swipe-in={cardMotion === 'swipe-in'}
+            class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
             ontouchstart={handleTouchStart}
             ontouchend={handleTouchEnd}
             role="region"
