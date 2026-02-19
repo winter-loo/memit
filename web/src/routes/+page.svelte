@@ -68,7 +68,7 @@
   /** @param {string | number} noteId */
   async function deleteNote(noteId) {
     if (!noteId) return false;
-    if (!confirm('Delete this note?')) return false;
+    // Removed confirm() for optimistic UI speed
     try {
       await apiFetchAuthed(supabase, `/api/note/delete/@${noteId}`, {
         method: 'POST'
