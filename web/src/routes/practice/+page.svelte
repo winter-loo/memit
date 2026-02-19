@@ -13,6 +13,8 @@
   );
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
   let reviewStats = $state(/** @type {{ timing: any, studied: any } | null} */ (null)); // loaded when queue is empty
+  let timingToday = $state(/** @type {any | null} */ (null));
+  let initialDueTotal = $state(/** @type {number | null} */ (null));
   let answerMode = $state(''); // not_sure, easy
   let revealCount = $state(0);
   let latestRevealIndex = $state(-1);
@@ -216,11 +218,33 @@
     }
   }
 
+  /** @param {any} timing */
+  function dueRemainingFromTiming(timing) {
+    if (!timing || typeof timing !== 'object') return 0;
+    const learn = Number(timing.learnCount ?? timing.learn_count ?? 0) || 0;
+    const review = Number(timing.reviewCount ?? timing.review_count ?? 0) || 0;
+    const newly = Number(timing.newCount ?? timing.new_count ?? 0) || 0;
+    return learn + review + newly;
+  }
+
   async function loadNextCard() {
     try {
-      // 1. Fetch the next queued card
-      const cardRes = await apiFetchAuthed(supabase, '/api/card/next');
+      // Fetch next card + scheduler timing together
+      const [cardRes, timingRes] = await Promise.all([
+        apiFetchAuthed(supabase, '/api/card/next'),
+        apiFetchAuthed(supabase, '/api/card/sched_timing_today')
+      ]);
+
       const cardData = await cardRes.json();
+      timingToday = await timingRes.json().catch(() => null);
+
+      const remaining = dueRemainingFromTiming(timingToday);
+      if (initialDueTotal === null && remaining > 0) {
+        initialDueTotal = remaining;
+      } else if (initialDueTotal !== null && remaining > initialDueTotal) {
+        // if counts increase (day rollover or sync), keep bar stable
+        initialDueTotal = remaining;
+      }
 
       // Protobuf JSON uses camelCase by default (cards, noteId)
       if (cardData.cards && cardData.cards.length > 0) {
@@ -228,7 +252,7 @@
         const card = qcard.card;
         const noteId = card.noteId || card.note_id; // handle camel or snake just in case
 
-        // 2. Fetch the note content for that card
+        // Fetch the note content for that card
         const noteRes = await apiFetchAuthed(supabase, `/api/note/@${noteId}`);
         const noteData = await noteRes.json();
 
@@ -410,7 +434,13 @@
   let nextHintLabel = $derived(revealItems[revealCount]?.label);
   let afterNextHintLabel = $derived(revealItems[revealCount + 1]?.label);
   let hasMoreReveal = $derived(revealCount < revealItems.length);
-  let progress = $derived(0);
+  let progress = $derived.by(() => {
+    const total = initialDueTotal ?? 0;
+    if (!total) return 0;
+    const remaining = dueRemainingFromTiming(timingToday);
+    const done = Math.max(0, Math.min(total, total - remaining));
+    return (done / total) * 100;
+  });
 
   // Swipe detection
   let touchStartX = 0;
