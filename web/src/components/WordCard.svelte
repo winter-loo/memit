@@ -10,6 +10,16 @@
 
   let deleting = $state(false);
   let dissolving = $state(false);
+  let deleteError = $state(false);
+
+  /** @type {'idle' | 'pending' | 'success' | 'fail'} */
+  let phase = $state('idle');
+  let phaseStart = 0;
+
+  /** @type {any[]} */
+  let particles = [];
+  let canvasW = 0;
+  let canvasH = 0;
 
   let rafId = 0;
 
@@ -63,7 +73,7 @@
     if (!ctx) return [];
     const img = ctx.getImageData(0, 0, w, h);
     const data = img.data;
-    const particles = [];
+    const out = [];
     const step = 6; // lower => more particles
     for (let y = 0; y < h; y += step) {
       for (let x = 0; x < w; x += step) {
@@ -73,13 +83,15 @@
           const r = data[base];
           const g = data[base + 1];
           const b = data[base + 2];
-          const angle = (Math.random() * Math.PI) / 1.1 - Math.PI / 2.2;
-          const speed = 0.6 + Math.random() * 1.8;
-          particles.push({
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.2 + Math.random() * 2.2;
+          out.push({
+            x0: x,
+            y0: y,
             x,
             y,
             vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - (0.4 + Math.random() * 0.8),
+            vy: Math.sin(angle) * speed,
             a: 1,
             r,
             g,
@@ -88,24 +100,31 @@
         }
       }
     }
-    return particles;
+    return out;
   }
 
-  async function startDissolve() {
-    if (!rootEl) return;
-    // ensure canvas is mounted
+  function clearCanvas() {
     if (!canvasEl) return;
+    const ctx = canvasEl.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  }
+
+  async function initParticles() {
+    if (!rootEl || !canvasEl) return false;
 
     const rect = rootEl.getBoundingClientRect();
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     const w = Math.max(1, Math.floor(rect.width * dpr));
     const h = Math.max(1, Math.floor(rect.height * dpr));
 
+    canvasW = w;
+    canvasH = h;
     canvasEl.width = w;
     canvasEl.height = h;
 
     const ctx = canvasEl.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return false;
 
     // Draw all text nodes (best-effort) onto canvas
     ctx.clearRect(0, 0, w, h);
@@ -134,43 +153,76 @@
 
     ctx.restore();
 
-    // Re-read pixels at device resolution
-    const pctx = canvasEl.getContext('2d');
-    if (!pctx) return;
+    particles = createParticlesFromCanvas(w, h);
+    return particles.length > 0;
+  }
 
-    const particles = createParticlesFromCanvas(w, h);
+  /** @param {number} now */
+  function animate(now) {
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext('2d');
+    if (!ctx) return;
 
-    // Animate (dissolving already true)
+    const explodeMs = 150;
+    const fadeMs = 240;
+    const reassembleMs = 260;
 
-    const duration = 520;
-    const start = performance.now();
+    const tPhase = Math.max(0, now - phaseStart);
 
-    /** @param {number} now */
-    const tick = (now) => {
-      const t = Math.min(1, (now - start) / duration);
-      pctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0, 0, canvasW, canvasH);
 
-      const fade = 1 - t;
+    if (phase === 'pending') {
+      const k = Math.min(1, tPhase / explodeMs);
       for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.02; // gravity
-        p.a = fade;
-
-        pctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a})`;
-        pctx.fillRect(p.x, p.y, 2, 2);
+        // fast burst then slow drift
+        p.x += p.vx * (1.6 - 1.1 * k);
+        p.y += p.vy * (1.6 - 1.1 * k);
+        // subtle float
+        p.x += (Math.random() - 0.5) * 0.6;
+        p.y += (Math.random() - 0.5) * 0.6;
+        p.a = 1;
+        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a})`;
+        ctx.fillRect(p.x, p.y, 2, 2);
       }
-
-      if (t < 1) {
-        rafId = requestAnimationFrame(tick);
-      } else {
+    } else if (phase === 'success') {
+      const k = Math.min(1, tPhase / fadeMs);
+      const a = 1 - k;
+      for (const p of particles) {
+        p.x += p.vx * 0.15;
+        p.y += p.vy * 0.15;
+        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+        ctx.fillRect(p.x, p.y, 2, 2);
+      }
+      if (k >= 1) {
         dissolving = false;
         deleting = false;
+        phase = 'idle';
+        clearCanvas();
         onRemoved && onRemoved();
+        return;
       }
-    };
+    } else if (phase === 'fail') {
+      const k = Math.min(1, tPhase / reassembleMs);
+      for (const p of particles) {
+        // lerp back to origin
+        p.x += (p.x0 - p.x) * (0.18 + 0.55 * k);
+        p.y += (p.y0 - p.y) * (0.18 + 0.55 * k);
+        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
+        ctx.fillRect(p.x, p.y, 2, 2);
+      }
+      if (k >= 1) {
+        dissolving = false;
+        deleting = false;
+        phase = 'idle';
+        deleteError = true;
+        clearCanvas();
+        return;
+      }
+    } else {
+      return;
+    }
 
-    rafId = requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(animate);
   }
 
   /** @param {MouseEvent} e */
@@ -179,28 +231,47 @@
     if (deleting || dissolving) return;
 
     deleting = true;
+    deleteError = false;
 
-    // Wait for API result; dissolve only on success
+    // Start microinteraction immediately
+    dissolving = true;
+    phase = 'pending';
+    phaseStart = performance.now();
+
+    // ensure canvas is ready + particles captured
+    await new Promise((r) => setTimeout(r, 0));
+    const okInit = await initParticles();
+    if (!okInit) {
+      // fallback: if we can't build particles, don't block delete
+      dissolving = false;
+      deleting = false;
+      return;
+    }
+
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(animate);
+
+    // Background API call; decide final state on result
     try {
       const ok = await (onDelete ? onDelete() : false);
-      if (!ok) {
-        deleting = false;
-        return;
-      }
-      // mount canvas + hide text before sampling/animating
-      dissolving = true;
-      // allow DOM to update so bind:this is set
-      await new Promise((r) => setTimeout(r, 0));
-      await startDissolve();
-    } catch {
-      deleting = false;
+      phase = ok ? 'success' : 'fail';
+      phaseStart = performance.now();
+    } catch (err) {
+      console.error(err);
+      phase = 'fail';
+      phaseStart = performance.now();
     }
   }
 </script>
 
 <article
   bind:this={rootEl}
-  class="relative p-6 card-3d-soft rounded-4xl bg-white dark:bg-card-dark group cursor-pointer"
+  class="relative p-6 card-3d-soft rounded-4xl group cursor-pointer"
+  class:bg-white={phase === 'idle'}
+  class:dark:bg-card-dark={phase === 'idle'}
+  class:bg-transparent={phase !== 'idle'}
+  class:border-transparent={phase !== 'idle'}
+  class:shadow-none={phase !== 'idle'}
 >
   <canvas
     bind:this={canvasEl}
@@ -256,9 +327,11 @@
       <button
         onclick={handleDeleteClick}
         disabled={deleting || dissolving}
-        class="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 dark:text-text-muted border-2 border-slate-100 dark:border-white/10 hover:text-danger hover:border-danger/30 hover:bg-danger/5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        class={deleteError
+          ? 'w-10 h-10 flex items-center justify-center rounded-2xl border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-red-500 border-red-500 bg-red-50'
+          : 'w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 dark:text-text-muted border-2 border-slate-100 dark:border-white/10 hover:text-danger hover:border-danger/30 hover:bg-danger/5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'}
       >
-        <span class="material-symbols-outlined text-2xl">delete</span>
+        <span class="material-symbols-outlined text-2xl">{deleteError ? 'error' : 'delete'}</span>
       </button>
       <button
         onclick={(e) => {
