@@ -148,23 +148,7 @@
       </div>
     </div>
 
-    <!-- Quick Review / Lightning Round -->
-    <div
-      class="bg-gradient-to-br from-primary to-orange-700 rounded-3xl p-6 text-white shadow-lg shadow-primary/20 relative overflow-hidden"
-    >
-      <!-- Decorative background circle -->
-      <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/20 rounded-full blur-xl"></div>
-      <h3 class="font-bold font-display text-lg mb-2 relative z-10">Lightning Round</h3>
-      <p class="text-sm text-white/80 mb-4 relative z-10">
-        Test yourself with 10 rapid-fire definitions.
-      </p>
-      <button
-        onclick={() => (window.location.href = resolve('/practice'))}
-        class="w-full py-3 bg-white text-primary font-bold rounded-xl text-sm hover:bg-slate-50 transition-colors shadow-lg relative z-10 cursor-pointer"
-      >
-        Start Now
-      </button>
-    </div>
+
 
     <div
       class="mt-auto pt-4 text-[10px] font-bold text-slate-400 dark:text-text-muted flex flex-wrap gap-3"
