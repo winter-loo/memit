@@ -11,5 +11,8 @@ export default defineConfig(({ mode }) => {
       minify: isRelease,
       sourcemap: !isRelease,
     },
+    server: {
+      host: '127.0.0.1'
+    }
   };
 });
