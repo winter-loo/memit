@@ -376,10 +376,12 @@ function positionModal() {
   if (selection && selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    if (rect.right + modalWidth + margin < viewportWidth) {
-      left = rect.right + margin;
+    // Push the modal to the far right (or far left) of the viewport
+    // so it doesn't obstruct the reading flow after the selected text.
+    if (viewportWidth - modalWidth - margin > rect.right) {
+      left = viewportWidth - modalWidth - margin;
     } else if (rect.left - modalWidth - margin > 0) {
-      left = rect.left - modalWidth - margin;
+      left = margin;
     } else {
       left = (viewportWidth - modalWidth) / 2;
     }
