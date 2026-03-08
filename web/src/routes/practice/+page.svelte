@@ -4,23 +4,26 @@
   import { parseNoteBack } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
   import { apiFetchAuthed } from '$lib/api';
+  import { Confetti } from 'svelte-confetti';
 
   /** @typedef {{ id: string | number, fields?: string[] }} Note */
   /** @typedef {{ id: string, label: string, value: string }} RevealItem */
 
   let currentCardData = $state(
-    /** @type {{ card_id: number, note: Note, queue?: number } | null} */ (null)
+    /** @type {{ card_id: number, note: Note, queue?: number, states?: any } | null} */ (null)
   );
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
   let reviewStats = $state(/** @type {{ timing: any, studied: any } | null} */ (null)); // loaded when queue is empty
-  let timingToday = $state(/** @type {any | null} */ (null));
+  let deckStats = $state({ new_count: 0, learning_count: 0, review_count: 0 });
   let initialDueTotal = $state(/** @type {number | null} */ (null));
-  let answerMode = $state(''); // not_sure, easy
+  let answerMode = $state(''); // foggy, got_it
   let revealCount = $state(0);
   let latestRevealIndex = $state(-1);
   let easyBurst = $state(false);
   let cardMotion = $state('idle'); // idle, settle, swipe-out, swipe-in
   let advancing = $state(false);
+  let isMounted = $state(false);
+
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
   /** @type {ReturnType<typeof setTimeout>[]} */
@@ -166,6 +169,46 @@
     return 'schedule';
   }
 
+  /** @param {any} state */
+  function formatSchedulingTime(state) {
+    if (!state) return '';
+    const normal = state.normal || state.Normal;
+    if (normal) {
+      if (normal.learning || normal.Learning) {
+        const s =
+          (normal.learning || normal.Learning).scheduledSecs ??
+          (normal.learning || normal.Learning).scheduled_secs ??
+          0;
+        return s < 60 ? '<1m' : `${Math.floor(s / 60)}m`;
+      }
+      if (normal.review || normal.Review) {
+        const d =
+          (normal.review || normal.Review).scheduledDays ??
+          (normal.review || normal.Review).scheduled_days ??
+          0;
+        return d >= 30 ? `${Math.floor(d / 30)}mo` : `${d}d`;
+      }
+      if (normal.relearning || normal.Relearning) {
+        const rl = normal.relearning || normal.Relearning;
+        const l = rl.learning || rl.Learning;
+        if (l) {
+          const s = l.scheduledSecs ?? l.scheduled_secs ?? 0;
+          return s < 60 ? '<1m' : `${Math.floor(s / 60)}m`;
+        }
+      }
+      if (normal.new || normal.New) return 'new';
+    }
+    const filtered = state.filtered || state.Filtered;
+    if (filtered?.preview || filtered?.Preview) {
+      const s =
+        (filtered.preview || filtered.Preview).scheduledSecs ??
+        (filtered.preview || filtered.Preview).scheduled_secs ??
+        0;
+      return s < 60 ? '<1m' : `${Math.floor(s / 60)}m`;
+    }
+    return '';
+  }
+
   /** @param {Note} note */
   function buildRevealData(note) {
     const rawBack = note?.fields?.[1] || '';
@@ -203,6 +246,36 @@
     easyBurst = false;
   }
 
+  async function refreshStats() {
+    try {
+      const res = await apiFetchAuthed(supabase, '/api/deck/stats');
+      if (!res) return;
+      const data = await res.json();
+
+      // Check if counts changed to trigger pulse animation
+      const changed =
+        data.new_count !== deckStats.new_count ||
+        data.learning_count !== deckStats.learning_count ||
+        data.review_count !== deckStats.review_count;
+
+      deckStats = data;
+
+      if (changed) {
+        pulseStats();
+      }
+    } catch (e) {
+      console.error('Failed to refresh stats', e);
+    }
+  }
+
+  let statsPulsing = $state(false);
+  function pulseStats() {
+    statsPulsing = true;
+    schedule(() => {
+      statsPulsing = false;
+    }, 600);
+  }
+
   async function loadReviewStats() {
     try {
       const [timingRes, studiedRes] = await Promise.all([
@@ -218,27 +291,33 @@
     }
   }
 
-  /** @param {any} timing */
-  function dueRemainingFromTiming(timing) {
-    if (!timing || typeof timing !== 'object') return 0;
-    const learn = Number(timing.learnCount ?? timing.learn_count ?? 0) || 0;
-    const review = Number(timing.reviewCount ?? timing.review_count ?? 0) || 0;
-    const newly = Number(timing.newCount ?? timing.new_count ?? 0) || 0;
+  /** @param {any} stats */
+  function dueRemainingFromStats(stats) {
+    if (!stats || typeof stats !== 'object') return 0;
+    const learn = Number(stats.learning_count ?? stats.learnCount ?? stats.learn_count ?? 0) || 0;
+    const review = Number(stats.review_count ?? stats.reviewCount ?? stats.review_count ?? 0) || 0;
+    const newly = Number(stats.new_count ?? stats.newCount ?? stats.new_count ?? 0) || 0;
     return learn + review + newly;
   }
 
   async function loadNextCard() {
     try {
-      // Fetch next card + scheduler timing together
-      const [cardRes, timingRes] = await Promise.all([
+      // Fetch next card + deck stats together
+      const [cardRes, statsRes] = await Promise.all([
         apiFetchAuthed(supabase, '/api/card/next'),
-        apiFetchAuthed(supabase, '/api/card/sched_timing_today')
+        apiFetchAuthed(supabase, '/api/deck/stats')
       ]);
 
       const cardData = await cardRes.json();
-      timingToday = await timingRes.json().catch(() => null);
+      const newStats = await statsRes.json().catch(() => ({
+        new_count: 0,
+        learning_count: 0,
+        review_count: 0
+      }));
 
-      const remaining = dueRemainingFromTiming(timingToday);
+      deckStats = newStats;
+
+      const remaining = dueRemainingFromStats(deckStats);
       if (initialDueTotal === null && remaining > 0) {
         initialDueTotal = remaining;
       } else if (initialDueTotal !== null && remaining > initialDueTotal) {
@@ -259,7 +338,8 @@
         currentCardData = {
           card_id: card.id,
           note: noteData,
-          queue: qcard.queue
+          queue: qcard.queue,
+          states: qcard.states
         };
         view = 'question';
       } else {
@@ -292,6 +372,7 @@
 
   onMount(() => {
     supabase = getSupabaseClient();
+    isMounted = true;
 
     /** @param {KeyboardEvent} event */
     const handleKeyDown = (event) => {
@@ -310,23 +391,23 @@
       if (key === ' ') {
         event.preventDefault();
         if (view === 'question') {
-          showNotSureAnswer();
-        } else if (view === 'answer' && answerMode === 'not_sure') {
+          showFoggyAnswer();
+        } else if (view === 'answer' && answerMode === 'foggy') {
           revealMore();
         }
       } else if (key === 'Enter') {
         event.preventDefault();
         if (view === 'question') {
-          showEasyAnswer();
+          showGotItAnswer();
         } else if (view === 'answer') {
           nextCard();
         }
       } else if (key === 'ArrowLeft') {
-        if (view === 'answer' && answerMode === 'not_sure' && revealCount > 1) {
+        if (view === 'answer' && answerMode === 'foggy' && revealCount > 1) {
           revealCount -= 1;
         }
       } else if (key === 'ArrowRight') {
-        if (view === 'answer' && answerMode === 'not_sure' && hasMoreReveal) {
+        if (view === 'answer' && answerMode === 'foggy' && hasMoreReveal) {
           revealMore();
         }
       }
@@ -349,11 +430,13 @@
     };
   });
 
-  function showNotSureAnswer() {
-    // Answer HARD (2) immediately
-    apiFetchAuthed(supabase, `/api/card/answer/2`, { method: 'POST' }).catch(console.error);
+  function showFoggyAnswer() {
+    // Answer AGAIN (1) immediately
+    apiFetchAuthed(supabase, `/api/card/answer/1`, { method: 'POST' })
+      .then(() => refreshStats())
+      .catch(console.error);
 
-    answerMode = 'not_sure';
+    answerMode = 'foggy';
     revealCount = revealItems.length > 0 ? 1 : 0;
     if (revealCount > 0) markFreshReveal(0);
     cardMotion = 'settle';
@@ -363,11 +446,13 @@
     view = 'answer';
   }
 
-  function showEasyAnswer() {
+  function showGotItAnswer() {
     // Answer GOOD (3) immediately
-    apiFetchAuthed(supabase, `/api/card/answer/3`, { method: 'POST' }).catch(console.error);
+    apiFetchAuthed(supabase, `/api/card/answer/3`, { method: 'POST' })
+      .then(() => refreshStats())
+      .catch(console.error);
 
-    answerMode = 'easy';
+    answerMode = 'got_it';
     revealCount = 0;
     latestRevealIndex = -1;
     easyBurst = true;
@@ -380,7 +465,7 @@
   }
 
   function revealMore() {
-    if (view !== 'answer' || answerMode !== 'not_sure') return;
+    if (view !== 'answer' || answerMode !== 'foggy') return;
     if (revealCount >= revealItems.length) {
       pulseNoMoreHints();
       return;
@@ -437,7 +522,7 @@
   let progress = $derived.by(() => {
     const total = initialDueTotal ?? 0;
     if (!total) return 0;
-    const remaining = dueRemainingFromTiming(timingToday);
+    const remaining = dueRemainingFromStats(deckStats);
     const done = Math.max(0, Math.min(total, total - remaining));
     return (done / total) * 100;
   });
@@ -486,7 +571,9 @@
     class="bg-white dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300 relative overflow-hidden"
   >
     <main class="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
-      <div class="w-full max-w-[640px] flex flex-col items-center text-center gap-8">
+      <div
+        class="w-full max-w-[640px] flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out-expo"
+      >
         <div class="relative mb-2">
           <div class="relative w-40 h-40 mx-auto z-20 text-6xl flex items-center justify-center">
             ✅
@@ -499,37 +586,41 @@
           </p>
         </div>
 
-        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div
-            class="bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left"
+            class="bg-white dark:bg-card-dark rounded-3xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left shadow-sm hover:border-primary transition-all hover:scale-[1.02] duration-300"
           >
-            <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Studied today</p>
-            <p class="mt-2 text-lg font-bold text-gray-800 dark:text-white">
-              {reviewStats?.studied?.msg ?? '—'}
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+              Total Progress
+            </p>
+            <p class="mt-2 text-2xl font-black text-slate-800 dark:text-white">
+              {reviewStats?.studied?.msg ?? 'Completed!'}
             </p>
           </div>
 
           <div
-            class="bg-white dark:bg-card-dark rounded-2xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left"
+            class="bg-white dark:bg-card-dark rounded-3xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left shadow-sm hover:border-primary transition-all hover:scale-[1.02] duration-300"
           >
-            <p class="text-xs font-bold uppercase tracking-wider text-gray-400">Scheduler timing</p>
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+              Session Review
+            </p>
 
             {#if timingItems.length > 0}
               <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {#each timingItems as item (item.key)}
                   <div
-                    class="rounded-xl bg-slate-50 dark:bg-[#252525] px-3 py-2 border border-slate-200 dark:border-gray-700"
+                    class="rounded-2xl bg-slate-50 dark:bg-[#252525] px-3 py-2 border border-slate-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight-navy transition-colors"
                   >
                     <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-[16px] text-slate-400"
+                      <span class="material-symbols-outlined text-[16px] text-primary"
                         >{item.icon}</span
                       >
-                      <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      <p class="text-[9px] font-black uppercase tracking-wider text-slate-400">
                         {item.label}
                       </p>
                     </div>
                     <p
-                      class="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200 break-words"
+                      class="mt-1 text-sm font-black text-slate-700 dark:text-slate-200 break-words"
                     >
                       {item.valueText}
                     </p>
@@ -537,7 +628,9 @@
                 {/each}
               </div>
             {:else}
-              <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">—</p>
+              <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 font-bold italic">
+                — Session Stats Finalized —
+              </p>
             {/if}
           </div>
         </div>
@@ -545,14 +638,14 @@
     </main>
 
     <footer
-      class="w-full bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-6 z-20"
+      class="w-full bg-white/50 dark:bg-background-dark/50 backdrop-blur-md border-t-2 border-gray-100 dark:border-[#2A2A2A] p-8 z-20"
     >
       <div class="max-w-[1024px] mx-auto">
         <a
           href={resolve('/')}
-          class="block w-full text-center bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-widest py-3.5 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] transition-all active:translate-y-1 active:shadow-none cursor-pointer"
+          class="block w-full text-center bg-primary text-white rounded-2xl text-xl font-black uppercase tracking-[0.2em] py-5 shadow-[0_6px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-110 active:translate-y-1 active:shadow-none active:scale-[0.99] transition-all cursor-pointer"
         >
-          Continue
+          Return to Dashboard
         </a>
       </div>
     </footer>
@@ -566,7 +659,7 @@
       <p class="text-slate-500 dark:text-slate-400">Please sign in to start practice.</p>
       <a
         href={resolve('/')}
-        class="inline-block px-5 py-2.5 rounded-xl bg-primary text-white font-bold uppercase tracking-wider text-sm"
+        class="inline-block px-5 py-2.5 rounded-xl bg-primary text-white font-bold uppercase tracking-wider text-sm shadow-sm hover:brightness-105 transition-all"
       >
         Go to Login
       </a>
@@ -576,23 +669,43 @@
   <div
     class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300"
   >
-    <header class="w-full max-w-[1024px] mx-auto px-6 py-8 flex items-center gap-6">
-      <a href={resolve('/')} class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+    <header
+      class="w-full max-w-[1024px] mx-auto px-6 py-8 flex items-center gap-6"
+      class:animate-entrance={isMounted}
+      style="--entrance-delay: 0s;"
+    >
+      <a
+        href={resolve('/')}
+        class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 active:scale-90 transition-transform"
+      >
         <span class="material-symbols-outlined text-3xl font-bold">close</span>
       </a>
-      <div class="flex-1 h-4 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
+      <div
+        class="flex-1 h-4 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden shadow-inner"
+      >
         <div
-          class="h-full bg-primary rounded-full relative transition-all duration-300"
+          class="h-full bg-primary rounded-full relative transition-all duration-500 ease-out-expo"
           style="width: {progress}%;"
         >
           <div class="absolute top-1 left-1 right-1 h-1 bg-white/20 rounded-full"></div>
         </div>
       </div>
-      <div class="flex items-center gap-2 text-primary">
-        <span class="material-symbols-outlined font-bold" style="font-variation-settings: 'FILL' 1"
-          >favorite</span
-        >
-        <span class="text-xl font-bold">5</span>
+      <div
+        class="flex items-center gap-3 sm:gap-4 font-fredoka transition-all duration-300"
+        class:stats-pulse={statsPulsing}
+      >
+        <div class="flex flex-col items-center leading-none">
+          <span class="text-lg font-bold text-blue-500">{deckStats.new_count}</span>
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-tighter">New</span>
+        </div>
+        <div class="flex flex-col items-center leading-none">
+          <span class="text-lg font-bold text-orange-500">{deckStats.learning_count}</span>
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Learn</span>
+        </div>
+        <div class="flex flex-col items-center leading-none">
+          <span class="text-lg font-bold text-green-500">{deckStats.review_count}</span>
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Rev</span>
+        </div>
       </div>
     </header>
 
@@ -603,13 +716,15 @@
       >
         <!-- Word Card -->
         <div
-          class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] p-8 sm:p-12 origin-top transition-transform duration-300 ease-out will-change-transform"
+          class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] p-8 sm:p-12 min-h-[160px] origin-top transition-all duration-300 ease-out-expo will-change-transform"
           class:practice-card--swipe-out={cardMotion === 'swipe-out'}
           class:practice-card--swipe-in={cardMotion === 'swipe-in'}
           class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
+          class:animate-entrance={isMounted}
+          style="--entrance-delay: 0.1s;"
         >
-          <h1 class="font-bold text-gray-900 dark:text-white leading-8">
-            <span class="inline-block origin-top">
+          <h1 class="font-bold text-gray-900 dark:text-white leading-tight">
+            <span class="inline-block origin-top text-4xl sm:text-5xl tracking-tight">
               {currentNote.fields?.[0]}
             </span>
           </h1>
@@ -618,7 +733,7 @@
         <!-- Hint Stack -->
         {#if view === 'answer'}
           <div
-            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-8 duration-300 ease-out touch-pan-y"
+            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out-expo touch-pan-y"
             class:practice-card--swipe-out={cardMotion === 'swipe-out'}
             class:practice-card--swipe-in={cardMotion === 'swipe-in'}
             class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
@@ -627,7 +742,7 @@
             role="region"
             aria-label="Card Swipe Area"
           >
-            {#if answerMode === 'not_sure'}
+            {#if answerMode === 'foggy'}
               <!-- Background cards for stack effect -->
               {#if afterNextHintLabel}
                 <div
@@ -652,32 +767,32 @@
 
               <!-- Top Card -->
               <div
-                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-md stack-card-1 p-8 min-h-[320px] transition-all duration-300"
+                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-md stack-card-1 p-8 min-h-[320px] transition-all duration-300 ease-out-expo"
                 class:practice-card--settle={cardMotion === 'settle'}
               >
                 {#if currentHint}
                   <div class="flex justify-center mb-6">
                     <span
-                      class="px-4 py-1 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-[0.2em]"
+                      class="px-4 py-1 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-[0.2em] animate-in zoom-in-90 duration-300"
                       >{currentHint.label}</span
                     >
                   </div>
                   <div class="space-y-6">
                     <p
-                      class="text-gray-700 dark:text-gray-300 leading-relaxed text-lg font-medium text-center"
+                      class="text-gray-700 dark:text-gray-300 leading-relaxed text-xl font-medium text-center animate-in fade-in slide-in-from-top-4 duration-500 delay-150"
                     >
                       {currentHint.value}
                     </p>
                   </div>
                 {:else}
                   <div class="flex items-center justify-center h-full">
-                    <p class="text-gray-400">No hints available.</p>
+                    <p class="text-gray-400 italic">Thinking...</p>
                   </div>
                 {/if}
               </div>
-            {:else if answerMode === 'easy'}
+            {:else if answerMode === 'got_it'}
               <div
-                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-md p-10 flex flex-col items-center justify-center text-center min-h-[320px] animate-in fade-in zoom-in duration-300"
+                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-primary/30 dark:border-primary/20 shadow-xl shadow-primary/5 p-10 flex flex-col items-center justify-center text-center min-h-[320px] animate-in fade-in zoom-in-95 duration-500 ease-out-expo"
               >
                 <div class="flex justify-center mb-4">
                   <span
@@ -685,10 +800,10 @@
                     >Translation</span
                   >
                 </div>
-                <div class="inline-flex mx-auto mb-2 text-primary" class:easy-burst={easyBurst}>
-                  <span class="material-symbols-outlined text-5xl fill-1">check_circle</span>
+                <div class="inline-flex mx-auto mb-4 text-primary" class:easy-burst={easyBurst}>
+                  <span class="material-symbols-outlined text-6xl fill-1">check_circle</span>
                 </div>
-                <p class="text-3xl text-primary font-bold mt-2">
+                <p class="text-4xl text-primary font-black mt-2 tracking-tight">
                   {revealData.translation}
                 </p>
               </div>
@@ -697,10 +812,14 @@
         {/if}
 
         <!-- Mascot / Message -->
-        <div class="flex items-center gap-4 w-full">
-          <div class="relative shrink-0">
+        <div
+          class="flex items-center gap-4 w-full"
+          class:animate-entrance={isMounted}
+          style="--entrance-delay: 0.2s;"
+        >
+          <div class="relative shrink-0 group">
             <div
-              class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-4 border-white dark:border-card-dark shadow-sm"
+              class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-4 border-white dark:border-card-dark shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out-expo"
             >
               <div
                 class="relative w-full h-full bg-center bg-no-repeat bg-cover"
@@ -709,12 +828,12 @@
             </div>
           </div>
           <div
-            class="flex-1 bg-white dark:bg-card-dark p-5 rounded-2xl rounded-bl-none border-2 border-gray-100 dark:border-[#333333] shadow-sm relative"
+            class="flex-1 bg-white dark:bg-card-dark p-5 rounded-3xl rounded-bl-none border-2 border-gray-100 dark:border-[#333333] shadow-sm relative transition-all duration-300"
           >
-            <p class="text-gray-600 dark:text-gray-300 font-medium">
+            <p class="text-gray-600 dark:text-gray-300 font-medium leading-snug">
               {#if view === 'question'}
                 Try to recall the meaning before looking at hints!
-              {:else if answerMode === 'easy'}
+              {:else if answerMode === 'got_it'}
                 Spot on! You really know your stuff.
               {:else}
                 Each hint gets closer to the answer.
@@ -729,39 +848,41 @@
     </main>
 
     <footer
-      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t-2 border-gray-100 dark:border-[#2A2A2A] p-4 z-50"
+      class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t-2 border-gray-100 dark:border-[#2A2A2A] p-4 z-50 transition-all duration-500"
+      class:animate-entrance={isMounted}
+      style="--entrance-delay: 0.3s;"
     >
       <div
-        class="max-w-[1024px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4"
+        class="max-w-[1024px] mx-auto flex flex-col md:flex-row items-center justify-center gap-4 sm:gap-8"
       >
         {#if view === 'question'}
           <button
-            onclick={showNotSureAnswer}
-            class="w-full md:w-64 h-12 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+            onclick={showFoggyAnswer}
+            class="w-full md:w-64 h-14 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] hover:bg-slate-50 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
           >
-            <span>Not Sure</span>
+            <span>Foggy</span>
             <span
               class="keycap hidden sm:inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
             >
-              SPACE
+              {formatSchedulingTime(currentCardData?.states?.again)}
             </span>
           </button>
           <button
-            onclick={showEasyAnswer}
-            class="w-full md:w-64 h-12 bg-primary text-white rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+            onclick={showGotItAnswer}
+            class="w-full md:w-64 h-14 bg-primary text-white rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-105 active:translate-y-1 active:shadow-none active:scale-[0.98] transition-all cursor-pointer"
           >
-            <span>Easy</span>
+            <span>Got It!</span>
             <span
               class="keycap-orange hidden sm:inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
             >
-              ENTER
+              {formatSchedulingTime(currentCardData?.states?.good)}
             </span>
           </button>
         {:else}
           <button
             onclick={revealMore}
-            disabled={!hasMoreReveal || answerMode === 'easy'}
-            class="w-full md:w-64 h-12 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] active:translate-y-1 active:shadow-none transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={!hasMoreReveal || answerMode === 'got_it'}
+            class="w-full md:w-64 h-14 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] hover:bg-slate-50 active:translate-y-1 active:shadow-none transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <span>Next Hint</span>
             <span
@@ -772,7 +893,7 @@
           </button>
           <button
             onclick={nextCard}
-            class="w-full md:w-64 h-12 bg-primary text-white rounded-xl text-base font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+            class="w-full md:w-64 h-14 bg-primary text-white rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-105 active:translate-y-1 active:shadow-none active:scale-[0.98] transition-all cursor-pointer"
           >
             <span>Continue</span>
             <span
@@ -788,23 +909,69 @@
 {/if}
 
 <style>
+  :root {
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ease-out-expo {
+    transition-timing-function: var(--ease-out-expo);
+  }
+
+  /* Entrance Animations */
+  .animate-entrance {
+    animation: entrance 0.8s var(--ease-out-expo) backwards;
+    animation-delay: var(--entrance-delay, 0s);
+  }
+
+  @keyframes entrance {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Stats Pulse */
+  .stats-pulse {
+    animation: statsPulse 0.6s var(--ease-out-expo);
+  }
+
+  @keyframes statsPulse {
+    0% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
   .practice-card {
-    /* Helps iOS Safari avoid repainting the whole page during card morph */
     contain: layout paint;
     transform: translateZ(0);
     backface-visibility: hidden;
   }
+
   .practice-card--swipe-out {
-    animation: cardSwipeOut 170ms ease-in forwards;
+    animation: cardSwipeOut 0.25s var(--ease-out-quint) forwards;
     will-change: transform, opacity;
   }
+
   .practice-card--swipe-in {
-    animation: cardSwipeIn 210ms ease-out;
+    animation: cardSwipeIn 0.35s var(--ease-out-expo);
     will-change: transform, opacity;
   }
+
   .no-transition {
     transition: none !important;
   }
+
   .stack-card-1 {
     z-index: 30;
     transform: translateY(0);
@@ -829,49 +996,53 @@
   }
 
   .practice-card--settle {
-    animation: cardSettle 220ms ease-out;
+    animation: cardSettle 0.3s var(--ease-out-expo);
     will-change: transform;
   }
 
   .easy-burst {
-    animation: easyPop 320ms ease-out;
+    animation: easyPop 0.4s var(--ease-out-expo);
     will-change: transform, opacity;
   }
+
   @keyframes cardSettle {
     0% {
-      transform: translateY(8px) scale(0.98);
+      transform: translateY(12px) scale(0.96);
     }
     100% {
       transform: translateY(0) scale(1);
     }
   }
+
   @keyframes cardSwipeOut {
     0% {
-      transform: translateX(0);
+      transform: translateX(0) scale(1);
       opacity: 1;
     }
     100% {
-      transform: translateX(28px);
+      transform: translateX(40px) scale(0.95);
       opacity: 0;
     }
   }
+
   @keyframes cardSwipeIn {
     0% {
-      transform: translateX(-28px);
+      transform: translateX(-40px) scale(0.95);
       opacity: 0;
     }
     100% {
-      transform: translateX(0);
+      transform: translateX(0) scale(1);
       opacity: 1;
     }
   }
+
   @keyframes easyPop {
     0% {
-      transform: scale(0.7);
+      transform: scale(0.6);
       opacity: 0;
     }
-    70% {
-      transform: scale(1.12);
+    60% {
+      transform: scale(1.15);
       opacity: 1;
     }
     100% {

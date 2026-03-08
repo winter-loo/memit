@@ -46,7 +46,17 @@
     }
     if (v && typeof v === 'object') {
       const record = v;
-      for (const key of ['count', 'total', 'studied', 'studied_today', 'cards', 'cards_studied', 'new_count', 'learning_count', 'review_count']) {
+      for (const key of [
+        'count',
+        'total',
+        'studied',
+        'studied_today',
+        'cards',
+        'cards_studied',
+        'new_count',
+        'learning_count',
+        'review_count'
+      ]) {
         if (key in record) return coerceToInt(record[key]);
       }
     }
@@ -70,26 +80,62 @@
     >
       <div class="flex justify-between items-start mb-8 relative z-10">
         <div>
-          <h3 class="font-black font-display text-xl text-slate-800 dark:text-white tracking-tight mb-1">Daily Quest</h3>
-          <p class="text-[10px] text-slate-400 dark:text-text-muted uppercase tracking-[0.15em] font-black">Today's Schedule</p>
+          <h3
+            class="font-black font-display text-xl text-slate-800 dark:text-white tracking-tight mb-1"
+          >
+            Daily Quest
+          </h3>
+          <p
+            class="text-[10px] text-slate-400 dark:text-text-muted uppercase tracking-[0.15em] font-black"
+          >
+            Today's Schedule
+          </p>
         </div>
-        <div class="w-11 h-11 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center border border-primary/10 transition-transform group-hover:scale-110 duration-500">
-          <span class="material-icons-round text-primary dark:text-primary-bright text-2xl">auto_awesome</span>
+        <div
+          class="w-11 h-11 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center border border-primary/10 transition-transform group-hover:scale-110 duration-500"
+        >
+          <span class="material-icons-round text-primary dark:text-primary-bright text-2xl"
+            >auto_awesome</span
+          >
         </div>
       </div>
 
       <div class="grid grid-cols-3 gap-3 mb-8 relative z-10">
-        <div class="flex flex-col items-center p-4 bg-slate-50/50 dark:bg-midnight-navy/40 rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all duration-200 hover:bg-white dark:hover:bg-charcoal-blue hover:shadow-md hover:border-blue-500/20 group/stat">
-          <span class="text-[10px] font-black text-blue-500/80 dark:text-blue-400 mb-2 uppercase tracking-widest">New</span>
-          <span class="text-2xl font-black text-slate-800 dark:text-white group-hover/stat:scale-110 transition-transform">{deckStats.new_count}</span>
+        <div
+          class="flex flex-col items-center p-4 bg-slate-50/50 dark:bg-midnight-navy/40 rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all duration-200 hover:bg-white dark:hover:bg-charcoal-blue hover:shadow-md hover:border-blue-500/20 group/stat"
+        >
+          <span
+            class="text-[10px] font-black text-blue-500/80 dark:text-blue-400 mb-2 uppercase tracking-widest"
+            >New</span
+          >
+          <span
+            class="text-2xl font-black text-slate-800 dark:text-white group-hover/stat:scale-110 transition-transform"
+            >{deckStats.new_count}</span
+          >
         </div>
-        <div class="flex flex-col items-center p-4 bg-slate-50/50 dark:bg-midnight-navy/40 rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all duration-200 hover:bg-white dark:hover:bg-charcoal-blue hover:shadow-md hover:border-orange-500/20 group/stat">
-          <span class="text-[10px] font-black text-orange-500/80 dark:text-orange-400 mb-2 uppercase tracking-widest">Learn</span>
-          <span class="text-2xl font-black text-slate-800 dark:text-white group-hover/stat:scale-110 transition-transform">{deckStats.learning_count}</span>
+        <div
+          class="flex flex-col items-center p-4 bg-slate-50/50 dark:bg-midnight-navy/40 rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all duration-200 hover:bg-white dark:hover:bg-charcoal-blue hover:shadow-md hover:border-orange-500/20 group/stat"
+        >
+          <span
+            class="text-[10px] font-black text-orange-500/80 dark:text-orange-400 mb-2 uppercase tracking-widest"
+            >Learn</span
+          >
+          <span
+            class="text-2xl font-black text-slate-800 dark:text-white group-hover/stat:scale-110 transition-transform"
+            >{deckStats.learning_count}</span
+          >
         </div>
-        <div class="flex flex-col items-center p-4 bg-slate-50/50 dark:bg-midnight-navy/40 rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all duration-200 hover:bg-white dark:hover:bg-charcoal-blue hover:shadow-md hover:border-green-500/20 group/stat">
-          <span class="text-[10px] font-black text-green-500/80 dark:text-green-400 mb-2 uppercase tracking-widest">Review</span>
-          <span class="text-2xl font-black text-slate-800 dark:text-white group-hover/stat:scale-110 transition-transform">{deckStats.review_count}</span>
+        <div
+          class="flex flex-col items-center p-4 bg-slate-50/50 dark:bg-midnight-navy/40 rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all duration-200 hover:bg-white dark:hover:bg-charcoal-blue hover:shadow-md hover:border-green-500/20 group/stat"
+        >
+          <span
+            class="text-[10px] font-black text-green-500/80 dark:text-green-400 mb-2 uppercase tracking-widest"
+            >Review</span
+          >
+          <span
+            class="text-2xl font-black text-slate-800 dark:text-white group-hover/stat:scale-110 transition-transform"
+            >{deckStats.review_count}</span
+          >
         </div>
       </div>
 
@@ -99,9 +145,14 @@
       >
         <span class="relative z-10 flex items-center justify-center gap-2">
           Resume Training
-          <span class="material-icons-round text-sm transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+          <span
+            class="material-icons-round text-sm transition-transform group-hover/btn:translate-x-1"
+            >arrow_forward</span
+          >
         </span>
-        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></div>
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"
+        ></div>
       </button>
     </div>
 
@@ -161,8 +212,6 @@
         </div>
       </div>
     </div>
-
-
 
     <div
       class="mt-auto pt-4 text-[10px] font-bold text-slate-400 dark:text-text-muted flex flex-wrap gap-3"
