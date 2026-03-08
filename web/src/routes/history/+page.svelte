@@ -58,6 +58,7 @@
           <p class="text-slate-500 font-medium">Manage and review your saved words</p>
         </div>
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <!-- disable
           <div class="relative">
             <span
               class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -75,6 +76,7 @@
             <span class="material-symbols-outlined text-lg">filter_list</span>
             Filter
           </button>
+          -->
         </div>
       </div>
 

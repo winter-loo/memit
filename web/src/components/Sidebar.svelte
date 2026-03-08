@@ -147,22 +147,13 @@
           alt="Profile Avatar"
           class="w-14 h-14 rounded-2xl border-b-4 border-slate-200 dark:border-midnight-navy object-cover"
           src={user?.user_metadata?.avatar_url ||
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuDeD1sN-JjGtZJLrzc_y0ZsgUsptc6gBG3NYwwjn-uGP3CNzx9iLsNzl2sOHgUNIEOPx0PDcQZJ6CTCwpr8N2U1EAWzRMQq4PQNHSeayyjTbv7ynWTDxqo_hHp7-D0E7Vf6s9e1h8z-S_Vlabz1ZKzdv2c4nz1wXmRbrJoRKUF7hRekN1W7U-g9A-oroqg2wxviPwAeuRX-47MI3y7Px56mbrLZYu7f1PjfK12GYIoDDF5-9h5uNJi3lsajYSYNiRvGau6rQ7m5ShU'}
+            'https://lh3.googleusercontent.com/aida-public/AB6AXuCvHo8CB37FgWxYK2Rxkw_PqFZFp0QolAqzQI8HjdnuLjLL6SBT66HSmjL8xC7nxEgfCxDMJhjoRiNa-KurJRjU-WnE5dpCuho_8xLoupi34vmnRv8YQUWUzbGOhF0faxH1xNX7BDZa4pEfCA5KL78e8bW4azj8iZHOgaDl9EpLZsJYYQQt39fEE3Kd5tNCFILSWfvUKSRTz8NMOAXYBBPNl_UJ-U_SXN6X2vj_mLlDxDYzzmK9DIegy91R5ZvmSN_oZM_IlpBfoCc'}
         />
-        <div
-          class="absolute -top-3 -right-3 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full border-2 border-white dark:border-charcoal-blue shadow-sm font-fredoka"
-        >
-          LVL 12
-        </div>
       </div>
       <div class="flex-grow min-w-0">
         <p class="text-base font-fredoka font-bold text-slate-800 dark:text-white truncate">
           {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
         </p>
-        <div class="flex items-center gap-1">
-          <span class="material-symbols-outlined text-primary text-sm fill-1">bolt</span>
-          <span class="text-xs font-bold text-primary uppercase">2,450 XP</span>
-        </div>
       </div>
       <button
         onclick={handleSignOut}

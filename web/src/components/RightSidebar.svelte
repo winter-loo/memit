@@ -220,9 +220,6 @@
         >About</button
       >
       <button type="button" class="hover:text-slate-800 dark:hover:text-white transition-colors"
-        >Store</button
-      >
-      <button type="button" class="hover:text-slate-800 dark:hover:text-white transition-colors"
         >Help</button
       >
       <button type="button" class="hover:text-slate-800 dark:hover:text-white transition-colors"
