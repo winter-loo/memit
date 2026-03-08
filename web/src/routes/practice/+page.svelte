@@ -4,25 +4,20 @@
   import { parseNoteBack } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
   import { apiFetchAuthed } from '$lib/api';
-  import { Confetti } from 'svelte-confetti';
 
   /** @typedef {{ id: string | number, fields?: string[] }} Note */
-  /** @typedef {{ id: string, label: string, value: string }} RevealItem */
+  /** @typedef {{ simple_definition?: string, in_chinese?: string, examples?: string[], synonyms?: string[], detailed_explanation?: string, etymology?: string, antonyms?: string[] }} CardDetails */
 
+  let view = $state('loading'); // loading, question, answer, complete, unauthenticated
   let currentCardData = $state(
     /** @type {{ card_id: number, note: Note, queue?: number, states?: any } | null} */ (null)
   );
-  let view = $state('loading'); // loading, question, answer, complete, unauthenticated
-  let reviewStats = $state(/** @type {{ timing: any, studied: any } | null} */ (null)); // loaded when queue is empty
   let deckStats = $state({ new_count: 0, learning_count: 0, review_count: 0 });
   let initialDueTotal = $state(/** @type {number | null} */ (null));
-  let answerMode = $state(''); // foggy, got_it
-  let revealCount = $state(0);
-  let latestRevealIndex = $state(-1);
-  let easyBurst = $state(false);
-  let cardMotion = $state('idle'); // idle, settle, swipe-out, swipe-in
+  let reviewStats = $state(/** @type {{ timing: any, studied: any } | null} */ (null));
+  let revealed = $state(false);
+  let feedback = $state(''); // foggy, got_it
   let advancing = $state(false);
-  let isMounted = $state(false);
 
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
@@ -32,7 +27,7 @@
   /** @param {() => void} fn @param {number} ms */
   function schedule(fn, ms) {
     const id = setTimeout(() => {
-      timers = timers.filter((timerId) => timerId !== id);
+      timers = timers.filter((t) => t !== id);
       fn();
     }, ms);
     timers = [...timers, id];
@@ -40,25 +35,8 @@
   }
 
   function clearAllTimers() {
-    for (const id of timers) {
-      clearTimeout(id);
-    }
+    for (const id of timers) clearTimeout(id);
     timers = [];
-  }
-
-  /** @param {unknown} value */
-  function firstNonEmptyString(value) {
-    return typeof value === 'string' && value.trim() ? value.trim() : '';
-  }
-
-  /** @param {unknown} value */
-  function firstNonEmptyArrayItem(value) {
-    if (!Array.isArray(value)) return '';
-    for (const item of value) {
-      const text = firstNonEmptyString(item);
-      if (text) return text;
-    }
-    return '';
   }
 
   /** @param {string} key */
@@ -86,38 +64,20 @@
   /** @param {string} key @param {any} value @returns {string} */
   function formatTimingValue(key, value) {
     if (value === null || value === undefined) return '—';
-
-    // booleans
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-
-    // numbers
     if (typeof value === 'number') {
       const k = String(key).toLowerCase();
-      // timestamps
       if (k.includes('at') || k.includes('time') || k.includes('timestamp')) {
-        // heuristics: ms vs sec
         const ms = value > 2e12 ? value : value > 1e9 ? value * 1000 : null;
         if (ms) return new Date(ms).toLocaleString();
       }
-      // durations
-      if (k.includes('sec') || k.includes('secs') || k.includes('seconds')) {
-        return formatDuration(value);
-      }
-      if (k.includes('ms') || k.includes('millis')) {
-        return formatDuration(value / 1000);
-      }
-      // percentages
-      if (k.includes('pct') || k.includes('percent')) {
-        return `${value}%`;
-      }
-      // plain count
+      if (k.includes('sec') || k.includes('secs') || k.includes('seconds')) return formatDuration(value);
+      if (k.includes('ms') || k.includes('millis')) return formatDuration(value / 1000);
+      if (k.includes('pct') || k.includes('percent')) return `${value}%`;
       return value.toLocaleString();
     }
-
-    // strings
     if (typeof value === 'string') {
       const k = String(key).toLowerCase();
-      // timestamps as strings ("1700000000", "1700000000000", or ISO)
       if (k.includes('at') || k.includes('time') || k.includes('timestamp')) {
         const trimmed = value.trim();
         if (/^\d+$/.test(trimmed)) {
@@ -130,30 +90,19 @@
       }
       return value;
     }
-
-    // arrays
     if (Array.isArray(value)) {
       if (value.length === 0) return '—';
       if (value.length <= 3) return value.map(String).join(', ');
       return `${value.length} items`;
     }
-
-    // objects
     if (typeof value === 'object') {
       try {
         const keys = Object.keys(value);
         if (keys.length === 0) return '—';
-        if (keys.length <= 3) {
-          return keys
-            .map((k) => `${titleizeKey(k)}: ${formatTimingValue(k, value[k])}`)
-            .join(' · ');
-        }
+        if (keys.length <= 3) return keys.map((k) => `${titleizeKey(k)}: ${formatTimingValue(k, value[k])}`).join(' · ');
         return `${keys.length} fields`;
-      } catch {
-        return '—';
-      }
+      } catch { return '—'; }
     }
-
     return String(value);
   }
 
@@ -165,7 +114,6 @@
     if (k.includes('review') || k.includes('rev')) return 'refresh';
     if (k.includes('new')) return 'fiber_new';
     if (k.includes('due')) return 'pending_actions';
-    if (k.includes('next')) return 'schedule';
     return 'schedule';
   }
 
@@ -175,17 +123,11 @@
     const normal = state.normal || state.Normal;
     if (normal) {
       if (normal.learning || normal.Learning) {
-        const s =
-          (normal.learning || normal.Learning).scheduledSecs ??
-          (normal.learning || normal.Learning).scheduled_secs ??
-          0;
+        const s = (normal.learning || normal.Learning).scheduledSecs ?? (normal.learning || normal.Learning).scheduled_secs ?? 0;
         return s < 60 ? '<1m' : `${Math.floor(s / 60)}m`;
       }
       if (normal.review || normal.Review) {
-        const d =
-          (normal.review || normal.Review).scheduledDays ??
-          (normal.review || normal.Review).scheduled_days ??
-          0;
+        const d = (normal.review || normal.Review).scheduledDays ?? (normal.review || normal.Review).scheduled_days ?? 0;
         return d >= 30 ? `${Math.floor(d / 30)}mo` : `${d}d`;
       }
       if (normal.relearning || normal.Relearning) {
@@ -200,50 +142,42 @@
     }
     const filtered = state.filtered || state.Filtered;
     if (filtered?.preview || filtered?.Preview) {
-      const s =
-        (filtered.preview || filtered.Preview).scheduledSecs ??
-        (filtered.preview || filtered.Preview).scheduled_secs ??
-        0;
+      const s = (filtered.preview || filtered.Preview).scheduledSecs ?? (filtered.preview || filtered.Preview).scheduled_secs ?? 0;
       return s < 60 ? '<1m' : `${Math.floor(s / 60)}m`;
     }
     return '';
   }
 
-  /** @param {Note} note */
-  function buildRevealData(note) {
+  /** @param {Note} note @returns {CardDetails} */
+  function buildCardDetails(note) {
     const rawBack = note?.fields?.[1] || '';
     const parsed = parseNoteBack(rawBack);
-    const fallbackDefinition =
-      rawBack && typeof rawBack === 'string' && !rawBack.trim().startsWith('{') ? rawBack : '';
+    const fallbackDefinition = rawBack && typeof rawBack === 'string' && !rawBack.trim().startsWith('{') ? rawBack : '';
 
-    const example = firstNonEmptyArrayItem(parsed.examples);
-    const synonym = firstNonEmptyArrayItem(parsed.synonyms);
-    const simpleDefinition = firstNonEmptyString(parsed.simple_definition) || fallbackDefinition;
-    const translation =
-      firstNonEmptyString(parsed.in_chinese) ||
-      firstNonEmptyString(parsed.translation) ||
-      firstNonEmptyString(note?.fields?.[2]) ||
-      'No translation available.';
-    const etymology = firstNonEmptyString(parsed.etymology) || firstNonEmptyString(parsed.origins);
-
-    /** @type {RevealItem[]} */
-    const items = [];
-    if (example) items.push({ id: 'example', label: 'Example', value: example });
-    if (synonym) items.push({ id: 'synonym', label: 'Synonym', value: synonym });
-    if (simpleDefinition) {
-      items.push({ id: 'simple-definition', label: 'Definition', value: simpleDefinition });
-    }
-    if (translation) items.push({ id: 'translation', label: 'Translation', value: translation });
-    if (etymology) items.push({ id: 'etymology', label: 'Etymology', value: etymology });
-
-    return { translation, items };
+    return {
+      simple_definition: (parsed.simple_definition || '').trim() || fallbackDefinition,
+      in_chinese: (parsed.in_chinese || parsed.translation || note?.fields?.[2] || '').trim() || undefined,
+      examples: Array.isArray(parsed.examples) ? parsed.examples.filter(/** @param {any} e */ (e) => typeof e === 'string' && e.trim()) : [],
+      synonyms: Array.isArray(parsed.synonyms) ? parsed.synonyms.filter(/** @param {any} s */ (s) => typeof s === 'string' && s.trim()) : [],
+      detailed_explanation: (parsed.detailed_explanation || '').trim() || undefined,
+      etymology: (parsed.etymology || parsed.origins || '').trim() || undefined,
+      antonyms: Array.isArray(parsed.antonyms) ? parsed.antonyms.filter(/** @param {any} a */ (a) => typeof a === 'string' && a.trim()) : []
+    };
   }
 
-  function resetCardAnswerState() {
-    answerMode = '';
-    revealCount = 0;
-    latestRevealIndex = -1;
-    easyBurst = false;
+  /** @param {any} stats */
+  function dueRemainingFromStats(stats) {
+    if (!stats || typeof stats !== 'object') return 0;
+    const learn = Number(stats.learning_count ?? stats.learnCount ?? stats.learn_count ?? 0) || 0;
+    const review = Number(stats.review_count ?? stats.reviewCount ?? stats.review_count ?? 0) || 0;
+    const newly = Number(stats.new_count ?? stats.newCount ?? stats.new_count ?? 0) || 0;
+    return learn + review + newly;
+  }
+
+  let statsPulsing = $state(false);
+  function pulseStats() {
+    statsPulsing = true;
+    schedule(() => { statsPulsing = false; }, 600);
   }
 
   async function refreshStats() {
@@ -251,29 +185,12 @@
       const res = await apiFetchAuthed(supabase, '/api/deck/stats');
       if (!res) return;
       const data = await res.json();
-
-      // Check if counts changed to trigger pulse animation
-      const changed =
-        data.new_count !== deckStats.new_count ||
-        data.learning_count !== deckStats.learning_count ||
-        data.review_count !== deckStats.review_count;
-
+      const changed = data.new_count !== deckStats.new_count || data.learning_count !== deckStats.learning_count || data.review_count !== deckStats.review_count;
       deckStats = data;
-
-      if (changed) {
-        pulseStats();
-      }
+      if (changed) pulseStats();
     } catch (e) {
       console.error('Failed to refresh stats', e);
     }
-  }
-
-  let statsPulsing = $state(false);
-  function pulseStats() {
-    statsPulsing = true;
-    schedule(() => {
-      statsPulsing = false;
-    }, 600);
   }
 
   async function loadReviewStats() {
@@ -291,125 +208,114 @@
     }
   }
 
-  /** @param {any} stats */
-  function dueRemainingFromStats(stats) {
-    if (!stats || typeof stats !== 'object') return 0;
-    const learn = Number(stats.learning_count ?? stats.learnCount ?? stats.learn_count ?? 0) || 0;
-    const review = Number(stats.review_count ?? stats.reviewCount ?? stats.review_count ?? 0) || 0;
-    const newly = Number(stats.new_count ?? stats.newCount ?? stats.new_count ?? 0) || 0;
-    return learn + review + newly;
-  }
-
   async function loadNextCard() {
     try {
-      // Fetch next card + deck stats together
       const [cardRes, statsRes] = await Promise.all([
         apiFetchAuthed(supabase, '/api/card/next'),
         apiFetchAuthed(supabase, '/api/deck/stats')
       ]);
-
       const cardData = await cardRes.json();
-      const newStats = await statsRes.json().catch(() => ({
-        new_count: 0,
-        learning_count: 0,
-        review_count: 0
-      }));
-
+      const newStats = await statsRes.json().catch(() => ({ new_count: 0, learning_count: 0, review_count: 0 }));
       deckStats = newStats;
 
       const remaining = dueRemainingFromStats(deckStats);
       if (initialDueTotal === null && remaining > 0) {
         initialDueTotal = remaining;
       } else if (initialDueTotal !== null && remaining > initialDueTotal) {
-        // if counts increase (day rollover or sync), keep bar stable
         initialDueTotal = remaining;
       }
 
-      // Protobuf JSON uses camelCase by default (cards, noteId)
       if (cardData.cards && cardData.cards.length > 0) {
         const qcard = cardData.cards[0];
         const card = qcard.card;
-        const noteId = card.noteId || card.note_id; // handle camel or snake just in case
-
-        // Fetch the note content for that card
+        const noteId = card.noteId || card.note_id;
         const noteRes = await apiFetchAuthed(supabase, `/api/note/@${noteId}`);
         const noteData = await noteRes.json();
-
-        currentCardData = {
-          card_id: card.id,
-          note: noteData,
-          queue: qcard.queue,
-          states: qcard.states
-        };
+        currentCardData = { card_id: card.id, note: noteData, queue: qcard.queue, states: qcard.states };
         view = 'question';
       } else {
-        // Empty queue
         currentCardData = null;
         view = 'complete';
         void loadReviewStats();
       }
     } catch (e) {
       console.error(e);
-      view = 'complete'; // Fail safe
+      view = 'complete';
       void loadReviewStats();
     }
-    resetCardAnswerState();
-    cardMotion = 'idle';
+    revealed = false;
+    feedback = '';
     advancing = false;
   }
 
-  /** @param {number} index */
-  function markFreshReveal(index) {
-    latestRevealIndex = index;
-    schedule(() => {
-      if (latestRevealIndex === index) latestRevealIndex = -1;
-    }, 620);
+  function revealAnswer() {
+    revealed = true;
   }
 
-  function pulseNoMoreHints() {
-    // No-op for now, hints are exhausted
+  /** @param {'foggy' | 'got_it'} value */
+  function chooseFeedback(value) {
+    if (advancing) return;
+    feedback = value;
+    const answerGrade = value === 'foggy' ? 1 : 3;
+    apiFetchAuthed(supabase, `/api/card/answer/${answerGrade}`, { method: 'POST' })
+      .then(() => refreshStats())
+      .catch(console.error);
+
+    advancing = true;
+    schedule(async () => {
+      await loadNextCard();
+    }, 400);
   }
+
+  function nextCard() {
+    if (advancing) return;
+    advancing = true;
+    loadNextCard();
+  }
+
+  let currentNote = $derived(currentCardData?.note || { id: -1, fields: [] });
+  let prompt = $derived(currentNote.fields?.[0] || '');
+  let cardDetails = $derived(buildCardDetails(currentNote));
+  let progress = $derived.by(() => {
+    const total = initialDueTotal ?? 0;
+    if (!total) return 0;
+    const remaining = dueRemainingFromStats(deckStats);
+    const done = Math.max(0, Math.min(total, total - remaining));
+    return (done / total) * 100;
+  });
+  let foggyTime = $derived(formatSchedulingTime(currentCardData?.states?.again));
+  let gotItTime = $derived(formatSchedulingTime(currentCardData?.states?.good));
+
+  let timingItems = $derived.by(() => {
+    const timing = reviewStats?.timing;
+    if (!timing || typeof timing !== 'object') return [];
+    return Object.entries(timing)
+      .filter(([, v]) => v !== null && v !== undefined)
+      .map(([key, value]) => ({
+        key,
+        label: titleizeKey(key),
+        icon: timingIcon(key),
+        valueText: formatTimingValue(key, value)
+      }))
+      .filter((item) => item.valueText !== '—');
+  });
 
   onMount(() => {
     supabase = getSupabaseClient();
-    isMounted = true;
 
     /** @param {KeyboardEvent} event */
     const handleKeyDown = (event) => {
       const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT')
-      ) {
-        return;
-      }
+      if (target instanceof HTMLElement && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return;
 
-      const key = event.key;
-      if (key === ' ') {
+      if (event.key === ' ') {
         event.preventDefault();
-        if (view === 'question') {
-          showFoggyAnswer();
-        } else if (view === 'answer' && answerMode === 'foggy') {
-          revealMore();
-        }
-      } else if (key === 'Enter') {
+        if (view === 'question' && !revealed) revealAnswer();
+        else if (view === 'question' && revealed && !feedback) chooseFeedback('foggy');
+      } else if (event.key === 'Enter') {
         event.preventDefault();
-        if (view === 'question') {
-          showGotItAnswer();
-        } else if (view === 'answer') {
-          nextCard();
-        }
-      } else if (key === 'ArrowLeft') {
-        if (view === 'answer' && answerMode === 'foggy' && revealCount > 1) {
-          revealCount -= 1;
-        }
-      } else if (key === 'ArrowRight') {
-        if (view === 'answer' && answerMode === 'foggy' && hasMoreReveal) {
-          revealMore();
-        }
+        if (view === 'question' && !revealed) revealAnswer();
+        else if (view === 'question' && revealed && !feedback) chooseFeedback('got_it');
       }
     };
 
@@ -429,233 +335,55 @@
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
-
-  function showFoggyAnswer() {
-    // Answer AGAIN (1) immediately
-    apiFetchAuthed(supabase, `/api/card/answer/1`, { method: 'POST' })
-      .then(() => refreshStats())
-      .catch(console.error);
-
-    answerMode = 'foggy';
-    revealCount = revealItems.length > 0 ? 1 : 0;
-    if (revealCount > 0) markFreshReveal(0);
-    cardMotion = 'settle';
-    schedule(() => {
-      if (cardMotion === 'settle') cardMotion = 'idle';
-    }, 240);
-    view = 'answer';
-  }
-
-  function showGotItAnswer() {
-    // Answer GOOD (3) immediately
-    apiFetchAuthed(supabase, `/api/card/answer/3`, { method: 'POST' })
-      .then(() => refreshStats())
-      .catch(console.error);
-
-    answerMode = 'got_it';
-    revealCount = 0;
-    latestRevealIndex = -1;
-    easyBurst = true;
-    cardMotion = 'settle';
-    schedule(() => {
-      easyBurst = false;
-      if (cardMotion === 'settle') cardMotion = 'idle';
-    }, 340);
-    view = 'answer';
-  }
-
-  function revealMore() {
-    if (view !== 'answer' || answerMode !== 'foggy') return;
-    if (revealCount >= revealItems.length) {
-      pulseNoMoreHints();
-      return;
-    }
-
-    revealCount += 1;
-    const freshIndex = revealCount - 1;
-    markFreshReveal(freshIndex);
-  }
-
-  function nextCard() {
-    if (advancing) return;
-
-    advancing = true;
-    cardMotion = 'swipe-out';
-    schedule(async () => {
-      await loadNextCard();
-
-      // If we have a new card, animate in. Otherwise completion view handles itself.
-      if (currentCardData) {
-        cardMotion = 'swipe-in';
-        schedule(() => {
-          cardMotion = 'idle';
-          advancing = false;
-        }, 210);
-      } else {
-        view = 'complete';
-        advancing = false;
-      }
-    }, 170);
-  }
-
-  let currentNote = $derived(currentCardData?.note || { id: -1, fields: [] });
-  let revealData = $derived(buildRevealData(currentNote));
-
-  let timingItems = $derived.by(() => {
-    const timing = reviewStats?.timing;
-    if (!timing || typeof timing !== 'object') return [];
-    return Object.entries(timing)
-      .filter(([, v]) => v !== null && v !== undefined)
-      .map(([key, value]) => ({
-        key,
-        label: titleizeKey(key),
-        icon: timingIcon(key),
-        valueText: formatTimingValue(key, value)
-      }))
-      .filter((item) => item.valueText !== '—');
-  });
-  let revealItems = $derived(revealData.items);
-  let currentHint = $derived(revealItems[revealCount - 1]);
-  let nextHintLabel = $derived(revealItems[revealCount]?.label);
-  let afterNextHintLabel = $derived(revealItems[revealCount + 1]?.label);
-  let hasMoreReveal = $derived(revealCount < revealItems.length);
-  let progress = $derived.by(() => {
-    const total = initialDueTotal ?? 0;
-    if (!total) return 0;
-    const remaining = dueRemainingFromStats(deckStats);
-    const done = Math.max(0, Math.min(total, total - remaining));
-    return (done / total) * 100;
-  });
-
-  // Swipe detection
-  let touchStartX = 0;
-  let touchEndX = 0;
-
-  /** @param {TouchEvent} e */
-  function handleTouchStart(e) {
-    touchStartX = e.changedTouches[0].screenX;
-  }
-
-  /** @param {TouchEvent} e */
-  function handleTouchEnd(e) {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-  }
-
-  function handleSwipe() {
-    const diff = touchEndX - touchStartX;
-    const threshold = 50;
-
-    if (Math.abs(diff) < threshold) return;
-
-    if (diff > 0) {
-      // Swipe Right -> Next Hint (as requested)
-      if (hasMoreReveal) revealMore();
-    } else {
-      // Swipe Left -> Previous Hint (as requested)
-      if (revealCount > 1) revealCount -= 1;
-    }
-  }
 </script>
 
+<style>
+  .paper-grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    filter: url(#paper-noise);
+    background: rgba(128, 120, 108, 0.025);
+    mix-blend-mode: multiply;
+    border-radius: inherit;
+  }
+
+  :global(.dark) .paper-grain::before {
+    background: rgba(180, 170, 155, 0.03);
+    mix-blend-mode: soft-light;
+  }
+
+  .keycap {
+    box-shadow: 0 2px 0px 0px #d1d5db;
+  }
+  :global(.dark) .keycap {
+    box-shadow: 0 2px 0px 0px #1a1a1a;
+  }
+  .keycap-primary {
+    box-shadow: 0 2px 0px 0px #cc7000;
+  }
+</style>
+
+<svg class="absolute h-0 w-0" aria-hidden="true">
+  <filter id="paper-noise">
+    <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" />
+    <feColorMatrix type="saturate" values="0" />
+  </filter>
+</svg>
+
+<svelte:head>
+  <title>Practice</title>
+</svelte:head>
+
 {#if view === 'loading'}
-  <div
-    class="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark"
-  >
-    <div
-      class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"
-    ></div>
-  </div>
-{:else if view === 'complete'}
-  <div
-    class="bg-white dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300 relative overflow-hidden"
-  >
-    <main class="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
-      <div
-        class="w-full max-w-[640px] flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-bottom-12 duration-700 ease-out-expo"
-      >
-        <div class="relative mb-2">
-          <div class="relative w-40 h-40 mx-auto z-20 text-6xl flex items-center justify-center">
-            ✅
-          </div>
-        </div>
-        <div class="space-y-2">
-          <h1 class="text-4xl md:text-5xl font-bold text-primary tracking-tight">All caught up</h1>
-          <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">
-            No cards due right now.
-          </p>
-        </div>
-
-        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div
-            class="bg-white dark:bg-card-dark rounded-3xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left shadow-sm hover:border-primary transition-all hover:scale-[1.02] duration-300"
-          >
-            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-              Total Progress
-            </p>
-            <p class="mt-2 text-2xl font-black text-slate-800 dark:text-white">
-              {reviewStats?.studied?.msg ?? 'Completed!'}
-            </p>
-          </div>
-
-          <div
-            class="bg-white dark:bg-card-dark rounded-3xl p-6 border-2 border-gray-100 dark:border-[#333333] text-left shadow-sm hover:border-primary transition-all hover:scale-[1.02] duration-300"
-          >
-            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-              Session Review
-            </p>
-
-            {#if timingItems.length > 0}
-              <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {#each timingItems as item (item.key)}
-                  <div
-                    class="rounded-2xl bg-slate-50 dark:bg-[#252525] px-3 py-2 border border-slate-200 dark:border-gray-700 hover:bg-white dark:hover:bg-midnight-navy transition-colors"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-[16px] text-primary"
-                        >{item.icon}</span
-                      >
-                      <p class="text-[9px] font-black uppercase tracking-wider text-slate-400">
-                        {item.label}
-                      </p>
-                    </div>
-                    <p
-                      class="mt-1 text-sm font-black text-slate-700 dark:text-slate-200 break-words"
-                    >
-                      {item.valueText}
-                    </p>
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 font-bold italic">
-                — Session Stats Finalized —
-              </p>
-            {/if}
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <footer
-      class="w-full bg-white/50 dark:bg-background-dark/50 backdrop-blur-md border-t-2 border-gray-100 dark:border-[#2A2A2A] p-8 z-20"
-    >
-      <div class="max-w-[1024px] mx-auto">
-        <a
-          href={resolve('/')}
-          class="block w-full text-center bg-primary text-white rounded-2xl text-xl font-black uppercase tracking-[0.2em] py-5 shadow-[0_6px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-110 active:translate-y-1 active:shadow-none active:scale-[0.99] transition-all cursor-pointer"
-        >
-          Return to Dashboard
-        </a>
-      </div>
-    </footer>
+  <div class="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
   </div>
 {:else if view === 'unauthenticated'}
-  <div class="min-h-screen flex items-center justify-center px-6">
+  <div class="min-h-screen flex items-center justify-center px-6 bg-background-light dark:bg-background-dark">
     <div class="text-center space-y-4">
-      <h1 class="text-2xl font-fredoka font-bold text-slate-800 dark:text-white">
-        Sign in required
-      </h1>
+      <h1 class="text-2xl font-fredoka font-bold text-slate-800 dark:text-white">Sign in required</h1>
       <p class="text-slate-500 dark:text-slate-400">Please sign in to start practice.</p>
       <a
         href={resolve('/')}
@@ -665,34 +393,79 @@
       </a>
     </div>
   </div>
+{:else if view === 'complete'}
+  <div class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
+    <main class="flex-1 flex flex-col items-center justify-center px-6">
+      <div class="w-full max-w-[640px] flex flex-col items-center text-center gap-8">
+        <div class="text-6xl">✅</div>
+        <div class="space-y-2">
+          <h1 class="text-4xl md:text-5xl font-bold text-primary tracking-tight">All caught up</h1>
+          <p class="text-xl text-gray-500 dark:text-gray-400 font-medium">No cards due right now.</p>
+        </div>
+
+        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="bg-white dark:bg-card-dark rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 text-left">
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Progress</p>
+            <p class="mt-2 text-2xl font-black text-slate-800 dark:text-white">
+              {reviewStats?.studied?.msg ?? 'Completed!'}
+            </p>
+          </div>
+
+          <div class="bg-white dark:bg-card-dark rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 text-left">
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Session Review</p>
+            {#if timingItems.length > 0}
+              <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {#each timingItems as item (item.key)}
+                  <div class="rounded-xl bg-slate-50 dark:bg-white/5 px-3 py-2 border border-slate-200/60 dark:border-white/10">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[16px] text-primary">{item.icon}</span>
+                      <p class="text-[9px] font-black uppercase tracking-wider text-slate-400">{item.label}</p>
+                    </div>
+                    <p class="mt-1 text-sm font-black text-slate-700 dark:text-slate-200 break-words">{item.valueText}</p>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 font-bold italic">— Session Stats Finalized —</p>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="w-full border-t border-slate-200/60 dark:border-white/10 p-8">
+      <div class="max-w-[640px] mx-auto">
+        <a
+          href={resolve('/')}
+          class="block w-full text-center bg-primary text-white rounded-2xl text-lg font-black uppercase tracking-[0.18em] py-4 shadow-[0_6px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-105 active:translate-y-1.5 active:shadow-none active:scale-[0.99] transition-all cursor-pointer"
+        >
+          Return to Dashboard
+        </a>
+      </div>
+    </footer>
+  </div>
 {:else}
-  <div
-    class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300"
-  >
-    <header
-      class="w-full max-w-[1024px] mx-auto px-6 py-8 flex items-center gap-6"
-      class:animate-entrance={isMounted}
-      style="--entrance-delay: 0s;"
-    >
+  <!-- question / answer view -->
+  <div class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
+    <header class="w-full max-w-[1024px] mx-auto px-6 py-8 flex items-center gap-6">
       <a
         href={resolve('/')}
-        class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 active:scale-90 transition-transform"
+        class="rounded-full text-gray-500 transition-transform hover:text-gray-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 active:scale-90 motion-reduce:transition-none dark:hover:text-gray-300 dark:focus-visible:ring-primary/30"
+        aria-label="Close practice"
       >
         <span class="material-symbols-outlined text-3xl font-bold">close</span>
       </a>
-      <div
-        class="flex-1 h-4 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden shadow-inner"
-      >
+      <div class="flex-1 h-4 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden shadow-inner">
         <div
-          class="h-full bg-primary rounded-full relative transition-all duration-500 ease-out-expo"
-          style="width: {progress}%;"
+          class="h-full bg-primary rounded-full relative transition-all duration-500 ease-out"
+          style={`width: ${progress}%;`}
         >
           <div class="absolute top-1 left-1 right-1 h-1 bg-white/20 rounded-full"></div>
         </div>
       </div>
       <div
         class="flex items-center gap-3 sm:gap-4 font-fredoka transition-all duration-300"
-        class:stats-pulse={statsPulsing}
+        class:scale-110={statsPulsing}
       >
         <div class="flex flex-col items-center leading-none">
           <span class="text-lg font-bold text-blue-500">{deckStats.new_count}</span>
@@ -709,345 +482,166 @@
       </div>
     </header>
 
-    <main class="flex-1 flex flex-col items-center justify-start px-6 pb-24 pt-4 sm:pt-12">
-      <div
-        class="w-full max-w-[550px] flex flex-col gap-8 sm:gap-8 transition-transform duration-300 ease-in-out will-change-transform"
-        style="transform: translateY({view === 'question' ? '5vh' : '0'});"
-      >
-        <!-- Word Card -->
-        <div
-          class="practice-card w-full bg-white dark:bg-card-dark rounded-2xl flex flex-col items-center justify-center text-center shadow-[0_8px_0_0_#e5e7eb] dark:shadow-[0_8px_0_0_#1a1a1a] border-2 border-gray-100 dark:border-[#333333] p-8 sm:p-12 min-h-[160px] origin-top transition-all duration-300 ease-out-expo will-change-transform"
-          class:practice-card--swipe-out={cardMotion === 'swipe-out'}
-          class:practice-card--swipe-in={cardMotion === 'swipe-in'}
-          class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
-          class:animate-entrance={isMounted}
-          style="--entrance-delay: 0.1s;"
-        >
-          <h1 class="font-bold text-gray-900 dark:text-white leading-tight">
-            <span class="inline-block origin-top text-4xl sm:text-5xl tracking-tight">
-              {currentNote.fields?.[0]}
-            </span>
-          </h1>
-        </div>
-
-        <!-- Hint Stack -->
-        {#if view === 'answer'}
-          <div
-            class="relative w-full mb-8 sm:mb-12 h-[320px] animate-in fade-in slide-in-from-bottom-8 duration-500 ease-out-expo touch-pan-y"
-            class:practice-card--swipe-out={cardMotion === 'swipe-out'}
-            class:practice-card--swipe-in={cardMotion === 'swipe-in'}
-            class:no-transition={cardMotion === 'swipe-in' || cardMotion === 'swipe-out'}
-            ontouchstart={handleTouchStart}
-            ontouchend={handleTouchEnd}
-            role="region"
-            aria-label="Card Swipe Area"
-          >
-            {#if answerMode === 'foggy'}
-              <!-- Background cards for stack effect -->
-              {#if afterNextHintLabel}
-                <div
-                  class="absolute inset-0 w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-sm stack-card-3 flex items-start justify-center pt-2"
-                >
-                  <span
-                    class="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em]"
-                    >{afterNextHintLabel}</span
-                  >
-                </div>
-              {/if}
-              {#if nextHintLabel}
-                <div
-                  class="absolute inset-0 w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-sm stack-card-2 flex items-start justify-center pt-2"
-                >
-                  <span
-                    class="text-[10px] font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.2em]"
-                    >{nextHintLabel}</span
-                  >
-                </div>
-              {/if}
-
-              <!-- Top Card -->
-              <div
-                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-gray-100 dark:border-[#333333] shadow-md stack-card-1 p-8 min-h-[320px] transition-all duration-300 ease-out-expo"
-                class:practice-card--settle={cardMotion === 'settle'}
+    <main class="flex-1 px-4 pb-28 pt-4 sm:px-6 sm:pt-10">
+      <section class="mx-auto w-full max-w-[720px]">
+        <div class="relative pt-8 sm:pt-12">
+          <div class="relative space-y-10 sm:space-y-14">
+            <header class="sticky top-0 z-20 py-4 sm:py-5 -mt-4 sm:-mt-5 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md">
+              <h1
+                class="max-w-[20ch] text-left text-[clamp(1.5rem,4vw,2.5rem)] font-bold leading-[1.1] tracking-[-0.03em] text-slate-900 dark:text-white"
               >
-                {#if currentHint}
-                  <div class="flex justify-center mb-6">
-                    <span
-                      class="px-4 py-1 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-[0.2em] animate-in zoom-in-90 duration-300"
-                      >{currentHint.label}</span
-                    >
-                  </div>
-                  <div class="space-y-6">
-                    <p
-                      class="text-gray-700 dark:text-gray-300 leading-relaxed text-xl font-medium text-center animate-in fade-in slide-in-from-top-4 duration-500 delay-150"
-                    >
-                      {currentHint.value}
+                {prompt}
+              </h1>
+            </header>
+
+            <div class="relative min-h-[320px] sm:min-h-[340px]">
+              <!-- Revealed answer content -->
+              <div
+                class={`space-y-6 border-t border-slate-300/70 pt-6 transition-all duration-500 ease-out motion-reduce:transition-none dark:border-white/10 ${
+                  revealed
+                    ? 'opacity-100 translate-y-0'
+                    : 'pointer-events-none opacity-0 translate-y-8'
+                }`}
+                aria-hidden={!revealed}
+              >
+                <!-- 1. Simple Definition -->
+                {#if cardDetails.simple_definition}
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Definition</p>
+                    <p class="max-w-[38rem] text-lg leading-8 text-slate-800 dark:text-slate-100 sm:text-xl sm:leading-9">
+                      {cardDetails.simple_definition}
                     </p>
                   </div>
-                {:else}
-                  <div class="flex items-center justify-center h-full">
-                    <p class="text-gray-400 italic">Thinking...</p>
+                {/if}
+
+                <!-- 2. Translation -->
+                {#if cardDetails.in_chinese}
+                  <p class="text-xl font-bold text-primary flex items-center gap-2 font-fredoka">
+                    <span class="material-symbols-outlined text-lg">translate</span>
+                    {cardDetails.in_chinese}
+                  </p>
+                {/if}
+
+                <!-- 3. Examples -->
+                {#if cardDetails.examples && cardDetails.examples.length > 0}
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Examples</p>
+                    <ul class="space-y-2">
+                      {#each cardDetails.examples as example, i (i)}
+                        <li class="flex gap-2.5 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                          <span class="text-primary font-bold mt-0.5">•</span>
+                          <span>{example}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
+
+                <!-- 4. Synonyms -->
+                {#if cardDetails.synonyms && cardDetails.synonyms.length > 0}
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Synonyms</p>
+                    <div class="flex flex-wrap gap-2">
+                      {#each cardDetails.synonyms as synonym, i (i)}
+                        <span class="px-2.5 py-1 text-sm rounded-lg bg-slate-100 text-slate-600 dark:bg-white/8 dark:text-slate-300">{synonym}</span>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+
+                <!-- 5. Detailed Explanation -->
+                {#if cardDetails.detailed_explanation}
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Explanation</p>
+                    <p class="text-sm leading-7 text-slate-600 dark:text-slate-400">
+                      {cardDetails.detailed_explanation}
+                    </p>
+                  </div>
+                {/if}
+
+                <!-- 6. Origins -->
+                {#if cardDetails.etymology}
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Origins</p>
+                    <p class="text-sm leading-7 text-slate-500 dark:text-slate-400 italic">
+                      {cardDetails.etymology}
+                    </p>
+                  </div>
+                {/if}
+
+                <!-- 7. Antonyms -->
+                {#if cardDetails.antonyms && cardDetails.antonyms.length > 0}
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Antonyms</p>
+                    <div class="flex flex-wrap gap-2">
+                      {#each cardDetails.antonyms as antonym, i (i)}
+                        <span class="px-2.5 py-1 text-sm rounded-lg bg-red-50 text-red-600/80 dark:bg-red-500/10 dark:text-red-300/80">{antonym}</span>
+                      {/each}
+                    </div>
                   </div>
                 {/if}
               </div>
-            {:else if answerMode === 'got_it'}
-              <div
-                class="relative w-full bg-white dark:bg-card-dark rounded-2xl border-2 border-primary/30 dark:border-primary/20 shadow-xl shadow-primary/5 p-10 flex flex-col items-center justify-center text-center min-h-[320px] animate-in fade-in zoom-in-95 duration-500 ease-out-expo"
-              >
-                <div class="flex justify-center mb-4">
-                  <span
-                    class="px-4 py-1 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-[0.2em]"
-                    >Translation</span
-                  >
-                </div>
-                <div class="inline-flex mx-auto mb-4 text-primary" class:easy-burst={easyBurst}>
-                  <span class="material-symbols-outlined text-6xl fill-1">check_circle</span>
-                </div>
-                <p class="text-4xl text-primary font-black mt-2 tracking-tight">
-                  {revealData.translation}
-                </p>
-              </div>
-            {/if}
-          </div>
-        {/if}
 
-        <!-- Mascot / Message -->
-        <div
-          class="flex items-center gap-4 w-full"
-          class:animate-entrance={isMounted}
-          style="--entrance-delay: 0.2s;"
-        >
-          <div class="relative shrink-0 group">
-            <div
-              class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-4 border-white dark:border-card-dark shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out-expo"
-            >
+              <!-- Paper mask (before reveal) -->
               <div
-                class="relative w-full h-full bg-center bg-no-repeat bg-cover"
-                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAHtbiRDueIDF5dG93OSJIyZKuRIRLlcyxXs6AUZMiU-9aGsAiT0cmyilThWjVnUd8HncuM6tyVQo0HLzla2MLZObHjhQG_-ks2RTmKJdTD0rZeIA5UwJc9x5oGzePsCsuVNFqZipOpeh8c3WeA8hU7qWDmD-p7HYBMr5wbrhjlW-NSPv9a-BNsFgsjJE16Y9R8FB_TcoOWt13bC-mz8kZuaxF2rqTbWIjwFQNVjsse8J7VtVwpyLBaBXTlA9tNt4Ik7tcAzGjO7xU');"
-              ></div>
+                class={`absolute inset-x-0 top-0 z-10 transition-all duration-500 ease-out motion-reduce:transition-none ${
+                  revealed
+                    ? 'pointer-events-none translate-y-[calc(100%+2.8rem)] opacity-0 rotate-[0.45deg]'
+                    : 'translate-y-0 opacity-100'
+                }`}
+                aria-hidden={revealed}
+              >
+                <button
+                  class="paper-grain group relative block h-[220px] w-full overflow-hidden rounded-2xl border border-slate-200/60 bg-white/60 backdrop-blur-sm text-left transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 motion-reduce:transition-none cursor-pointer dark:border-white/10 dark:bg-white/5 dark:hover:shadow-[0_18px_40px_-28px_rgba(0,0,0,0.4)] dark:focus-visible:ring-primary/30"
+                  onclick={revealAnswer}
+                >
+                  <div class="relative flex h-full items-center justify-center px-8 text-center">
+                    <span
+                      class="text-[clamp(1.15rem,2.8vw,1.8rem)] font-bold uppercase tracking-[0.28em] text-[color:color-mix(in_srgb,var(--color-primary)_72%,#7c5b34)] transition-transform duration-200 group-hover:scale-[1.02] dark:text-[color:color-mix(in_srgb,var(--color-primary-light)_82%,#f3dec2)]"
+                    >
+                      Unmask It
+                    </span>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
-          <div
-            class="flex-1 bg-white dark:bg-card-dark p-5 rounded-3xl rounded-bl-none border-2 border-gray-100 dark:border-[#333333] shadow-sm relative transition-all duration-300"
-          >
-            <p class="text-gray-600 dark:text-gray-300 font-medium leading-snug">
-              {#if view === 'question'}
-                Try to recall the meaning before looking at hints!
-              {:else if answerMode === 'got_it'}
-                Spot on! You really know your stuff.
-              {:else}
-                Each hint gets closer to the answer.
-              {/if}
-            </p>
-            <div
-              class="absolute -left-2 bottom-0 w-4 h-4 bg-white dark:bg-card-dark border-l-2 border-b-2 border-gray-100 dark:border-[#333333] transform rotate-45 -translate-x-1/2"
-            ></div>
-          </div>
         </div>
-      </div>
+      </section>
     </main>
 
-    <footer
-      class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t-2 border-gray-100 dark:border-[#2A2A2A] p-4 z-50 transition-all duration-500"
-      class:animate-entrance={isMounted}
-      style="--entrance-delay: 0.3s;"
+    <!-- Fixed bottom bar -->
+    <div
+      class={`fixed inset-x-0 bottom-0 z-30 transition-all duration-500 ease-out ${
+        revealed
+          ? 'translate-y-0 opacity-100'
+          : 'translate-y-full opacity-0 pointer-events-none'
+      }`}
     >
-      <div
-        class="max-w-[1024px] mx-auto flex flex-col md:flex-row items-center justify-center gap-4 sm:gap-8"
-      >
-        {#if view === 'question'}
+      <div class="bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-lg border-t border-slate-200/60 dark:border-white/10">
+        <div class="mx-auto max-w-[720px] px-6 py-4 flex items-center justify-center gap-4">
           <button
-            onclick={showFoggyAnswer}
-            class="w-full md:w-64 h-14 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] hover:bg-slate-50 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+            disabled={advancing}
+            class="flex-1 h-14 rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-2 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] hover:bg-slate-50 active:translate-y-1 active:shadow-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={() => chooseFeedback('foggy')}
           >
             <span>Foggy</span>
-            <span
-              class="keycap hidden sm:inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
-            >
-              {formatSchedulingTime(currentCardData?.states?.again)}
-            </span>
+            {#if foggyTime}
+              <span class="keycap inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]">{foggyTime}</span>
+            {/if}
           </button>
           <button
-            onclick={showGotItAnswer}
-            class="w-full md:w-64 h-14 bg-primary text-white rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-105 active:translate-y-1 active:shadow-none active:scale-[0.98] transition-all cursor-pointer"
+            disabled={advancing}
+            class="flex-1 h-14 rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-2 bg-primary text-white shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-105 active:translate-y-1 active:shadow-none active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={() => chooseFeedback('got_it')}
           >
             <span>Got It!</span>
-            <span
-              class="keycap-orange hidden sm:inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
-            >
-              {formatSchedulingTime(currentCardData?.states?.good)}
-            </span>
+            {#if gotItTime}
+              <span class="keycap-primary inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]">{gotItTime}</span>
+            {/if}
           </button>
-        {:else}
-          <button
-            onclick={revealMore}
-            disabled={!hasMoreReveal || answerMode === 'got_it'}
-            class="w-full md:w-64 h-14 bg-white dark:bg-card-dark border-2 border-gray-200 dark:border-[#333333] text-gray-500 dark:text-gray-300 rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#e5e7eb] dark:shadow-[0_4px_0_0_#1a1a1a] hover:bg-slate-50 active:translate-y-1 active:shadow-none transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span>Next Hint</span>
-            <span
-              class="keycap hidden sm:inline-flex items-center justify-center bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-gray-700 text-[10px] text-gray-400 px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
-            >
-              SPACE
-            </span>
-          </button>
-          <button
-            onclick={nextCard}
-            class="w-full md:w-64 h-14 bg-primary text-white rounded-2xl text-base font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_4px_0_0_#cc7000] hover:bg-[#ff9a24] hover:brightness-105 active:translate-y-1 active:shadow-none active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <span>Continue</span>
-            <span
-              class="keycap-orange hidden sm:inline-flex items-center justify-center bg-primary-dark border border-white/20 text-[10px] text-white px-2 py-0.5 rounded-md font-black tracking-normal h-5 min-w-[50px]"
-            >
-              ENTER
-            </span>
-          </button>
-        {/if}
+        </div>
       </div>
-    </footer>
+    </div>
   </div>
 {/if}
-
-<style>
-  :root {
-    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .ease-out-expo {
-    transition-timing-function: var(--ease-out-expo);
-  }
-
-  /* Entrance Animations */
-  .animate-entrance {
-    animation: entrance 0.8s var(--ease-out-expo) backwards;
-    animation-delay: var(--entrance-delay, 0s);
-  }
-
-  @keyframes entrance {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Stats Pulse */
-  .stats-pulse {
-    animation: statsPulse 0.6s var(--ease-out-expo);
-  }
-
-  @keyframes statsPulse {
-    0% {
-      transform: scale(1);
-    }
-    30% {
-      transform: scale(1.1);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-
-  .practice-card {
-    contain: layout paint;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-  }
-
-  .practice-card--swipe-out {
-    animation: cardSwipeOut 0.25s var(--ease-out-quint) forwards;
-    will-change: transform, opacity;
-  }
-
-  .practice-card--swipe-in {
-    animation: cardSwipeIn 0.35s var(--ease-out-expo);
-    will-change: transform, opacity;
-  }
-
-  .no-transition {
-    transition: none !important;
-  }
-
-  .stack-card-1 {
-    z-index: 30;
-    transform: translateY(0);
-  }
-  .stack-card-2 {
-    z-index: 20;
-    transform: translateY(12px) scale(0.97);
-  }
-  .stack-card-3 {
-    z-index: 10;
-    transform: translateY(24px) scale(0.94);
-  }
-
-  .keycap {
-    box-shadow: 0 2px 0px 0px #d1d5db;
-  }
-  :global(.dark) .keycap {
-    box-shadow: 0 2px 0px 0px #1a1a1a;
-  }
-  .keycap-orange {
-    box-shadow: 0 2px 0px 0px #cc7000;
-  }
-
-  .practice-card--settle {
-    animation: cardSettle 0.3s var(--ease-out-expo);
-    will-change: transform;
-  }
-
-  .easy-burst {
-    animation: easyPop 0.4s var(--ease-out-expo);
-    will-change: transform, opacity;
-  }
-
-  @keyframes cardSettle {
-    0% {
-      transform: translateY(12px) scale(0.96);
-    }
-    100% {
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  @keyframes cardSwipeOut {
-    0% {
-      transform: translateX(0) scale(1);
-      opacity: 1;
-    }
-    100% {
-      transform: translateX(40px) scale(0.95);
-      opacity: 0;
-    }
-  }
-
-  @keyframes cardSwipeIn {
-    0% {
-      transform: translateX(-40px) scale(0.95);
-      opacity: 0;
-    }
-    100% {
-      transform: translateX(0) scale(1);
-      opacity: 1;
-    }
-  }
-
-  @keyframes easyPop {
-    0% {
-      transform: scale(0.6);
-      opacity: 0;
-    }
-    60% {
-      transform: scale(1.15);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-</style>
