@@ -125,6 +125,7 @@
   const localWordCount = $derived(countWords(localText));
   const isTooLongError = $derived(error.toLowerCase().includes('too long'));
   const PRACTICE_URL = 'https://memit.ldd.cool/practice';
+  const MIN_ANKI_EXPORT_FEEDBACK_MS = 1400;
 
   // Selection toolbar state
   let selectionToolbar = $state<{ x: number; y: number; text: string; range: Range } | null>(null);
@@ -229,8 +230,9 @@
   let exportState = $state<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   function exportToAnkiConnect() {
-    if (!result || exportState === 'loading') return;
+    if (!result || exportState === 'loading' || exportState === 'success') return;
     exportState = 'loading';
+    const exportStartedAt = Date.now();
 
     const note = {
       deckName: 'Default',
@@ -248,17 +250,21 @@
     };
 
     chrome.runtime.sendMessage({ type: 'EXPORT_TO_ANKI_CONNECT', note }, (response) => {
-      if (response && response.success) {
-        exportState = 'success';
-        setTimeout(() => (exportState = 'idle'), 2000);
-      } else {
-        exportState = 'error';
-        console.error('AnkiConnect error:', response?.error);
-        alert(
-          'Failed to export to Anki Desktop. Make sure Anki is running with AnkiConnect installed.'
-        );
-        setTimeout(() => (exportState = 'idle'), 3000);
-      }
+      const elapsed = Date.now() - exportStartedAt;
+      const remainingDelay = Math.max(0, MIN_ANKI_EXPORT_FEEDBACK_MS - elapsed);
+
+      setTimeout(() => {
+        if (response && response.success) {
+          exportState = 'success';
+        } else {
+          exportState = 'error';
+          console.error('AnkiConnect error:', response?.error);
+          alert(
+            'Failed to export to Anki Desktop. Make sure Anki is running with AnkiConnect installed.'
+          );
+          setTimeout(() => (exportState = 'idle'), 3000);
+        }
+      }, remainingDelay);
     });
   }
 
@@ -334,13 +340,25 @@
       </button>
       <button
         class="action-btn"
-        class:success={exportState === 'success'}
-        class:error={exportState === 'error'}
         onclick={exportToAnkiConnect}
-        disabled={!result || exportState === 'loading'}
-        title="Export to Anki Desktop"
+        disabled={!result || exportState === 'loading' || exportState === 'success'}
+        title={
+          exportState === 'success'
+            ? 'Exported to Anki Desktop'
+            : exportState === 'loading'
+              ? 'Exporting to Anki Desktop'
+              : 'Export to Anki Desktop'
+        }
       >
-        <AnkiIcon size={20} />
+        {#if exportState === 'loading'}
+          <AnkiIcon size={20} class="text-primary" animated={true} />
+        {:else if exportState === 'error'}
+          <AnkiIcon size={20} class="text-error" />
+        {:else if exportState === 'success'}
+          <AnkiIcon size={20} class="text-anki" />
+        {:else}
+          <AnkiIcon size={20} />
+        {/if}
       </button>
       <button class="action-btn" title="Practice" onclick={openPracticePage}>
         <Gamepad2 size={20} />
@@ -620,14 +638,6 @@
     color: var(--error-color);
   }
 
-  .action-btn.success {
-    color: #22c55e;
-  }
-
-  .action-btn.error {
-    color: #ef4444;
-  }
-
   .loading-container {
     display: flex;
     flex-direction: column;
@@ -677,6 +687,10 @@
 
   :global(.text-primary) {
     color: var(--primary-color);
+  }
+
+  :global(.text-anki) {
+    color: #7dc8ff;
   }
 
   .loading-fallback {
