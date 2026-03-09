@@ -166,7 +166,7 @@
 
       <div class="setting-item">
         <div class="setting-info">
-          <label for="auto-save">Auto-save to Anki</label>
+          <label for="auto-save">Auto-save to cloud</label>
           <p class="description">Automatically create a note in Anki after every lookup.</p>
         </div>
         <div class="setting-action">

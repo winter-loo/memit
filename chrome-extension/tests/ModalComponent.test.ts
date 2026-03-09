@@ -54,7 +54,7 @@ describe('Modal Component', () => {
     const onSave = vi.fn();
     render(Modal, { result: mockResult, onSave });
 
-    const saveButton = screen.getByTitle(/Save to Anki/i);
+    const saveButton = screen.getByTitle(/Save to cloud/i);
     expect(saveButton).toBeInTheDocument();
 
     await fireEvent.click(saveButton);

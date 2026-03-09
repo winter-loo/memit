@@ -18,7 +18,9 @@
     RefreshCw,
     X,
   } from '@lucide/svelte';
+  import AnkiIcon from './icons/AnkiIcon.svelte';
   import { fly } from 'svelte/transition';
+  import { marked } from 'marked';
 
   interface Props {
     result?: DictionaryResponse;
@@ -223,6 +225,42 @@
     localText = text;
   });
 
+  let exportState = $state<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  function exportToAnkiConnect() {
+    if (!result || exportState === 'loading') return;
+    exportState = 'loading';
+
+    const note = {
+      deckName: 'Default',
+      modelName: 'Basic',
+      fields: {
+        Front: result.word,
+        Back: `
+          <strong>${result.simple_definition}</strong><br>
+          ${result.in_chinese}<br><br>
+          <em>${result.ipa_pronunciation || ''}</em><br><br>
+          ${result.detailed_explanation ? marked.parse(result.detailed_explanation) : ''}
+        `,
+        tags: ['memit'],
+      },
+    };
+
+    chrome.runtime.sendMessage({ type: 'EXPORT_TO_ANKI_CONNECT', note }, (response) => {
+      if (response && response.success) {
+        exportState = 'success';
+        setTimeout(() => (exportState = 'idle'), 2000);
+      } else {
+        exportState = 'error';
+        console.error('AnkiConnect error:', response?.error);
+        alert(
+          'Failed to export to Anki Desktop. Make sure Anki is running with AnkiConnect installed.'
+        );
+        setTimeout(() => (exportState = 'idle'), 3000);
+      }
+    });
+  }
+
   let showFallback = $state(false);
 
   $effect(() => {
@@ -277,7 +315,7 @@
         class="action-btn"
         onclick={onSave}
         disabled={isSaving || isSaved || !result}
-        title={saveError ? 'Error saving' : isSaved ? 'Saved to Anki' : 'Save to Anki'}
+        title={saveError ? 'Error saving' : isSaved ? 'Saved to cloud' : 'Save to cloud'}
       >
         {#if isSaving}
           <CloudUpload size={20} class="pulsing text-primary" />
@@ -288,6 +326,16 @@
         {:else}
           <CloudUpload size={20} />
         {/if}
+      </button>
+      <button
+        class="action-btn"
+        class:success={exportState === 'success'}
+        class:error={exportState === 'error'}
+        onclick={exportToAnkiConnect}
+        disabled={!result || exportState === 'loading'}
+        title="Export to Anki Desktop"
+      >
+        <AnkiIcon size={20} />
       </button>
       <button class="action-btn" title="Practice">
         <Gamepad2 size={20} />
@@ -565,6 +613,14 @@
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--error-color);
     color: var(--error-color);
+  }
+
+  .action-btn.success {
+    color: #22c55e;
+  }
+
+  .action-btn.error {
+    color: #ef4444;
   }
 
   .loading-container {
