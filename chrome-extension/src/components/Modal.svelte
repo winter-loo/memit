@@ -124,6 +124,7 @@
 
   const localWordCount = $derived(countWords(localText));
   const isTooLongError = $derived(error.toLowerCase().includes('too long'));
+  const PRACTICE_URL = 'https://memit.ldd.cool/practice';
 
   // Selection toolbar state
   let selectionToolbar = $state<{ x: number; y: number; text: string; range: Range } | null>(null);
@@ -261,6 +262,10 @@
     });
   }
 
+  function openPracticePage() {
+    window.open(PRACTICE_URL, '_blank', 'noopener,noreferrer');
+  }
+
   let showFallback = $state(false);
 
   $effect(() => {
@@ -337,7 +342,7 @@
       >
         <AnkiIcon size={20} />
       </button>
-      <button class="action-btn" title="Practice">
+      <button class="action-btn" title="Practice" onclick={openPracticePage}>
         <Gamepad2 size={20} />
       </button>
       <button class="action-btn close" onclick={onClose} title="Close">
