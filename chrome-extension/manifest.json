@@ -2,6 +2,12 @@
   "manifest_version": 3,
   "name": "Memit",
   "version": "1.0.0",
+  "description": "AI-powered explanation and spaced repetition tool for deep understanding.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
   "permissions": ["contextMenus", "storage", "activeTab", "scripting", "tts"],
   "options_ui": {
     "page": "options.html",

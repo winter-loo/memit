@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Plate (Optional/Subtle) -->
+  <rect width="128" height="128" rx="28" fill="#0D151D"/>
+
+  <!-- The "M" Structure (Pillars/Books) -->
+  <rect x="30" y="44" width="16" height="50" rx="4" fill="#1E2E3D"/> <!-- Left Pillar -->
+  <rect x="82" y="44" width="16" height="50" rx="4" fill="#1E2E3D"/> <!-- Right Pillar -->
+
+  <!-- Central Pillar (The Insight) -->
+  <rect x="56" y="54" width="16" height="40" rx="4" fill="#FF8C00"/>
+
+  <!-- The AI Spark (Insight) -->
+  <path d="M64 22L67.5 31.5L77 35L67.5 38.5L64 48L60.5 38.5L51 35L60.5 31.5L64 22Z" fill="#FF8C00">
+    <animate attributeName="opacity" values="1;0.7;1" dur="3s" repeatCount="indefinite" />
+  </path>
+
+  <!-- Connecting Braces (Subtle) -->
+  <path d="M46 44L56 54" stroke="#1E2E3D" stroke-width="6" stroke-linecap="round"/>
+  <path d="M82 44L72 54" stroke="#1E2E3D" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -221,7 +221,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   ? (explanation as Record<string, unknown>)
                   : { explanation };
 
-              const enriched = { ...base, highlights };
+              const enriched: Record<string, unknown> = { ...base, highlights };
               if (pageUrl) {
                 enriched.page_url = pageUrl;
               }
