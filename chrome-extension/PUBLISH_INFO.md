@@ -63,4 +63,4 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
   - `public/icon-48.png` - 48x48
   - `public/icon-128.png` - 128x128
 - **Screenshots**: You will need to take at least one screenshot (1280x800 or 640x400) of the extension in action.
-- **Promotional Tile**: 440x280 image for the store listing.
+- **Promotional Tile**: `public/promo-tile.png` - 440x280 image for the store listing.
