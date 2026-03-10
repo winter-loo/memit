@@ -14,11 +14,11 @@
     CloudUpload,
     Frown,
     Gamepad2,
-    Languages,
     RefreshCw,
     X,
   } from '@lucide/svelte';
   import AnkiIcon from './icons/AnkiIcon.svelte';
+  import MemitWordmark from './icons/MemitWordmark.svelte';
   import { fly } from 'svelte/transition';
   import { marked } from 'marked';
 
@@ -320,10 +320,7 @@
 <DraggableModal bind:containerRef={modalRef}>
   {#snippet header()}
     <div class="brand">
-      <div class="brand-icon">
-        <Languages size={20} />
-      </div>
-      <h2 class="brand-name">memit</h2>
+      <MemitWordmark height={28} />
     </div>
     <div class="actions">
       <button
@@ -693,26 +690,6 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-  }
-
-  .brand-icon {
-    background: rgba(242, 139, 13, 0.1);
-    color: var(--primary-color);
-    padding: 0.4rem;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .brand-name {
-    font-size: 1rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-main);
-    opacity: 0.8;
-    margin: 0;
   }
 
   .actions {
