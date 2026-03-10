@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { Highlighter, Languages, Pencil } from '@lucide/svelte';
+  import { Highlighter, Pencil } from '@lucide/svelte';
   import { fade } from 'svelte/transition';
+  import MemitIcon from './icons/MemitIcon.svelte';
 
   interface Props {
     x: number;
@@ -20,7 +21,7 @@
     onclick={onExplain}
     title="Explain"
   >
-    <Languages size={16} class="text-primary" />
+    <MemitIcon size={16} class="text-primary" compact />
   </button>
   <div class="separator"></div>
   <button
@@ -32,12 +33,7 @@
     <Highlighter size={16} class="text-primary" />
   </button>
   <div class="separator"></div>
-  <button
-    class="toolbar-btn"
-    onmousedown={(e) => e.preventDefault()}
-    onclick={onEdit}
-    title="Edit"
-  >
+  <button class="toolbar-btn" onmousedown={(e) => e.preventDefault()} onclick={onEdit} title="Edit">
     <Pencil size={16} class="text-primary" />
   </button>
   <div class="arrow"></div>

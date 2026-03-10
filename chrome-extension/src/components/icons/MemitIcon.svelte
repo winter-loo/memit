@@ -2,8 +2,9 @@
   interface Props {
     size?: number;
     class?: string;
+    compact?: boolean;
   }
-  let { size = 24, class: className = '' }: Props = $props();
+  let { size = 24, class: className = '', compact = false }: Props = $props();
 </script>
 
 <svg
@@ -11,7 +12,7 @@
   role="img"
   width={size}
   height={size}
-  viewBox="0 0 128 128"
+  viewBox={compact ? '24 18 80 80' : '0 0 128 128'}
   fill="none"
   xmlns="http://www.w3.org/2000/svg"
   aria-label="memit"
