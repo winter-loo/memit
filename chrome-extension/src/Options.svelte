@@ -286,7 +286,7 @@
           </div>
           <div class="setting-action">
             <input
-              type="password"
+              type="text"
               id="openrouter-api-key"
               bind:value={settings.openRouterApiKey}
               placeholder="sk-or-v1-..."
@@ -308,7 +308,7 @@
           </div>
           <div class="setting-action">
             <input
-              type="password"
+              type="text"
               id="gemini-api-key"
               bind:value={settings.geminiApiKey}
               placeholder="AIzaSy..."

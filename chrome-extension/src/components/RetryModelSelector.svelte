@@ -53,11 +53,14 @@
       <label for="{idPrefix}-openrouter-key">OpenRouter API Key:</label>
     {/if}
     <input
-      type="password"
+      type="text"
       id="{idPrefix}-openrouter-key"
       bind:value={openRouterApiKey}
       placeholder={compact ? 'OpenRouter API Key' : 'sk-or-v1-...'}
     />
+    <p class="api-key-tip">
+      Get your key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+    </p>
   </div>
 {/if}
 
@@ -67,11 +70,14 @@
       <label for="{idPrefix}-gemini-key">Gemini API Key:</label>
     {/if}
     <input
-      type="password"
+      type="text"
       id="{idPrefix}-gemini-key"
       bind:value={geminiApiKey}
       placeholder={compact ? 'Gemini API Key' : 'AIzaSy...'}
     />
+    <p class="api-key-tip">
+      Get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>
+    </p>
   </div>
 {/if}
 
@@ -148,6 +154,21 @@
   .api-key-input.compact input {
     padding: 6px 10px;
     font-size: 13px;
+  }
+
+  .api-key-tip {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .api-key-tip a {
+    color: var(--primary-color);
+    text-decoration: none;
+  }
+
+  .api-key-tip a:hover {
+    text-decoration: underline;
   }
 
   .retry-btn {
