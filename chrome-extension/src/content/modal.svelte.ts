@@ -67,6 +67,7 @@ interface ModalProps {
   onNewQuery: (text: string) => void;
   onBack?: () => void;
   onForward?: () => void;
+  onEditText?: (original: string, replacement: string) => void;
 }
 
 // Reactive state for modal props
@@ -164,6 +165,32 @@ const modalProps = $state<ModalProps>({
     } else {
       modalProps.isLoading = true;
       fetchExplanation(newText, modalProps.modelId);
+    }
+  },
+  onEditText: (original: string, replacement: string) => {
+    if (!modalProps.result) return;
+
+    function replaceIn(str: string) {
+      return str.replaceAll(original, replacement);
+    }
+
+    const updated: DictionaryResponse = {
+      ...modalProps.result,
+      simple_definition: replaceIn(modalProps.result.simple_definition),
+      detailed_explanation: replaceIn(modalProps.result.detailed_explanation),
+      in_chinese: replaceIn(modalProps.result.in_chinese),
+      etymology: replaceIn(modalProps.result.etymology),
+      context_usage: replaceIn(modalProps.result.context_usage),
+      examples: modalProps.result.examples.map(replaceIn),
+      synonyms: modalProps.result.synonyms.map(replaceIn),
+      antonyms: modalProps.result.antonyms.map(replaceIn),
+    };
+
+    modalProps.result = updated;
+
+    const idx = modalProps.activeResponseIndex;
+    if (modalProps.responses[idx]?.result) {
+      modalProps.responses[idx] = { ...modalProps.responses[idx], result: updated };
     }
   },
 });

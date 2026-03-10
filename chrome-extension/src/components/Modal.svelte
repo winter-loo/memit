@@ -58,6 +58,7 @@
     pendingResponses?: number;
     pendingModelIds?: string[];
     onSelectResponse?: (index: number) => void;
+    onEditText?: (original: string, replacement: string) => void;
   }
 
   let {
@@ -85,6 +86,7 @@
     pendingResponses = 0,
     pendingModelIds = [],
     onSelectResponse,
+    onEditText,
   }: Props = $props();
 
   const activeResponse = $derived(responses[activeResponseIndex]);
@@ -128,7 +130,8 @@
   const MIN_ANKI_EXPORT_FEEDBACK_MS = 1400;
 
   // Selection toolbar state
-  let selectionToolbar = $state<{ x: number; y: number; text: string; range: Range } | null>(null);
+  let selectionToolbar = $state<{ x: number; y: number; bottom: number; text: string; range: Range } | null>(null);
+  let editPopover = $state<{ x: number; y: number; original: string; edited: string } | null>(null);
   let modalRef = $state<HTMLDivElement | null>(null);
 
   function mergeRanges(ranges: Range[]) {
@@ -188,6 +191,7 @@
         selectionToolbar = {
           x: rect.left + rect.width / 2,
           y: rect.top,
+          bottom: rect.bottom,
           text,
           range,
         };
@@ -492,6 +496,35 @@
   {/if}
 </DraggableModal>
 
+{#if editPopover}
+  <div
+    class="edit-popover"
+    style="top: {editPopover.y}px; left: {editPopover.x}px;"
+  >
+    <textarea
+      rows="3"
+      bind:value={editPopover.edited}
+      onkeydown={(e) => {
+        if (e.key === 'Escape') editPopover = null;
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          onEditText?.(editPopover!.original, editPopover!.edited);
+          editPopover = null;
+        }
+      }}
+    ></textarea>
+    <div class="edit-popover-actions">
+      <button
+        class="edit-popover-apply"
+        onclick={() => {
+          onEditText?.(editPopover!.original, editPopover!.edited);
+          editPopover = null;
+        }}
+      >Apply</button>
+      <button class="edit-popover-cancel" onclick={() => (editPopover = null)}>Cancel</button>
+    </div>
+  </div>
+{/if}
+
 {#if selectionToolbar}
   <SelectionToolbar
     x={selectionToolbar.x}
@@ -499,6 +532,17 @@
     onExplain={() => {
       if (selectionToolbar) {
         onNewQuery?.(selectionToolbar.text);
+        closeSelectionToolbar();
+      }
+    }}
+    onEdit={() => {
+      if (selectionToolbar) {
+        editPopover = {
+          x: selectionToolbar.x,
+          y: selectionToolbar.bottom + 8,
+          original: selectionToolbar.text,
+          edited: selectionToolbar.text,
+        };
         closeSelectionToolbar();
       }
     }}
@@ -576,6 +620,75 @@
 {/if}
 
 <style>
+  .edit-popover {
+    position: fixed;
+    z-index: 1001;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 220px;
+    max-width: 320px;
+  }
+
+  .edit-popover textarea {
+    width: 100%;
+    resize: vertical;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-main);
+    background: var(--card-bg, white);
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .edit-popover textarea:focus {
+    border-color: var(--primary-color);
+  }
+
+  .edit-popover-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .edit-popover-apply,
+  .edit-popover-cancel {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+  }
+
+  .edit-popover-apply {
+    background: var(--primary-color);
+    color: white;
+  }
+
+  .edit-popover-apply:hover {
+    filter: brightness(1.1);
+  }
+
+  .edit-popover-cancel {
+    background: var(--card-bg, #f3f4f6);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color, #e5e7eb);
+  }
+
+  .edit-popover-cancel:hover {
+    background: var(--bg-deep, #e5e7eb);
+  }
+
   .brand {
     display: flex;
     align-items: center;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Highlighter, Languages } from '@lucide/svelte';
+  import { Highlighter, Languages, Pencil } from '@lucide/svelte';
   import { fade } from 'svelte/transition';
 
   interface Props {
@@ -7,9 +7,10 @@
     y: number;
     onExplain: () => void;
     onHighlight?: () => void;
+    onEdit?: () => void;
   }
 
-  let { x, y, onExplain, onHighlight }: Props = $props();
+  let { x, y, onExplain, onHighlight, onEdit }: Props = $props();
 </script>
 
 <div class="selection-toolbar" style="top: {y}px; left: {x}px;" transition:fade={{ duration: 150 }}>
@@ -29,6 +30,15 @@
     title="Highlight"
   >
     <Highlighter size={16} class="text-primary" />
+  </button>
+  <div class="separator"></div>
+  <button
+    class="toolbar-btn"
+    onmousedown={(e) => e.preventDefault()}
+    onclick={onEdit}
+    title="Edit"
+  >
+    <Pencil size={16} class="text-primary" />
   </button>
   <div class="arrow"></div>
 </div>
