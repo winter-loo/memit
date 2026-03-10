@@ -47,7 +47,7 @@
   function speak() {
     if (ttsState !== 'idle') return;
     ttsState = 'loading';
-    chrome.runtime.sendMessage({ type: 'SPEAK_TEXT', text: result.word });
+    chrome.runtime.sendMessage({ type: 'SPEAK_TEXT', text: result.term });
   }
 
   $effect(() => {
@@ -66,10 +66,10 @@
 </script>
 
 <div class="explanation-container">
-  <!-- Word Header Section -->
-  <header class="word-header">
-    <div class="word-line">
-      <h1 class="word">{result.word}</h1>
+  <!-- Term Header Section -->
+  <header class="term-header">
+    <div class="term-line">
+      <h1 class="term">{result.term}</h1>
     </div>
     <div class="phonetic-line">
       {#if displayIPA}
@@ -155,7 +155,7 @@
               <p class="example-text">
                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                 {@html example.replace(
-                  new RegExp(`(${result.word})`, 'gi'),
+                  new RegExp(`(${result.term})`, 'gi'),
                   '<span class="highlight">$1</span>'
                 )}
               </p>
@@ -231,19 +231,19 @@
     background: var(--bg-dark);
   }
 
-  /* Word Header */
-  .word-header {
+  /* Term Header */
+  .term-header {
     padding: var(--spacing-md) var(--spacing-lg);
   }
 
-  .word-line {
+  .term-line {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     margin-bottom: 0.4rem;
   }
 
-  .word {
+  .term {
     font-size: 1.6rem;
     font-weight: 400;
     color: var(--text-main);

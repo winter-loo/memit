@@ -176,7 +176,7 @@ const modalProps = $state<ModalProps>({
 
     const updated: DictionaryResponse = {
       ...modalProps.result,
-      word: replaceIn(modalProps.result.word),
+      term: replaceIn(modalProps.result.term),
       simple_definition: replaceIn(modalProps.result.simple_definition),
       detailed_explanation: replaceIn(modalProps.result.detailed_explanation),
       in_chinese: replaceIn(modalProps.result.in_chinese),
@@ -546,7 +546,7 @@ async function fetchExplanation(text: string, currentModelId: string) {
           chrome.runtime.sendMessage(
             {
               type: 'SAVE_TO_ANKI',
-              word: currentResult.word,
+              term: currentResult.term,
               explanation: currentResult,
               highlights: uniqueHighlights,
             },

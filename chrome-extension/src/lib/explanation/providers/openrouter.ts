@@ -20,11 +20,11 @@ export class OpenRouterExplainer implements ContentExplainer {
 
     const prompt = `
         You are an advanced English dictionary and linguistic expert.
-        Explain the word: "${text}".
+        Explain the term or phrase: "${text}".
 
         Return the response ONLY in raw JSON format (no markdown code blocks) with the following structure:
         {
-            "word": "${text}",
+            "term": "${text}",
             "ipa_pronunciation": "International Phonetic Alphabet representation",
             "part_of_speech": "noun/verb/adjective etc.",
             "simple_definition": "A clear, concise definition for a general audience.",
@@ -34,7 +34,7 @@ export class OpenRouterExplainer implements ContentExplainer {
             "examples": ["Sentence 1", "Sentence 2", "Sentence 3"],
             "synonyms": ["synonym1", "synonym2"],
             "antonyms": ["antonym1", "antonym2"],
-            "context_usage": "When to use this word (formal, casual, slang, archaic)."
+            "context_usage": "When to use this term (formal, casual, slang, archaic)."
         }
     `;
 

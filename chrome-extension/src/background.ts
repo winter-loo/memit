@@ -193,7 +193,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ]);
 
       type PendingSave = {
-        word: string;
+        term: string;
         explanation: unknown;
         pageUrl?: string;
         highlights?: string[];
@@ -202,7 +202,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const isPendingSave = (v: unknown): v is PendingSave => {
         if (!v || typeof v !== 'object') return false;
         const obj = v as Record<string, unknown>;
-        return typeof obj.word === 'string' && 'explanation' in obj;
+        return typeof obj.term === 'string' && 'explanation' in obj;
       };
 
       // Check for pending save request
@@ -238,7 +238,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                 // Validate token first
                 await anki.whoami(token);
-                const noteId = await anki.addNote(pending.word, rawJson, token);
+                const noteId = await anki.addNote(pending.term, rawJson, token);
 
                 // Broadcast success to all tabs (original tab picks this up)
                 chrome.tabs.query({}, (tabs) => {
@@ -329,7 +329,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               // Store pending save request before opening login
               chrome.storage.local.set({
                 pendingSave: {
-                  word: message.word,
+                  term: message.term,
                   explanation: message.explanation,
                   pageUrl,
                   highlights,
@@ -349,7 +349,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const attemptSave = async (tokenToUse: string): Promise<number> => {
               // Validate token first (lightweight)
               await anki.whoami(tokenToUse);
-              return await anki.addNote(message.word, rawJson, tokenToUse);
+              return await anki.addNote(message.term, rawJson, tokenToUse);
             };
 
             const firstToken = hasPrimary ? primaryToken : fallbackToken;

@@ -1,5 +1,5 @@
 export interface DictionaryResponse {
-  word: string;
+  term: string;
   ipa_pronunciation: string;
   part_of_speech: string;
   simple_definition: string;

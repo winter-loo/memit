@@ -5,8 +5,8 @@
 <div class="skeleton-container" class:retrying={isRetrying}>
   <!-- Header Section -->
   <div class="header-skeleton">
-    <div class="word-line">
-      <div class="skeleton word-box"></div>
+    <div class="term-line">
+      <div class="skeleton term-box"></div>
     </div>
     <div class="skeleton phonetic-box"></div>
   </div>
@@ -73,14 +73,14 @@
     }
   }
 
-  .word-line {
+  .term-line {
     display: flex;
     align-items: center;
     gap: 1rem;
     margin-bottom: 0.75rem;
   }
 
-  .word-box {
+  .term-box {
     width: 180px;
     height: 2.5rem;
   }

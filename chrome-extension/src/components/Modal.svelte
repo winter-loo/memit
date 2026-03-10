@@ -242,7 +242,7 @@
       deckName: 'Default',
       modelName: 'Basic',
       fields: {
-        Front: result.word,
+        Front: result.term,
         Back: `
           <strong>${result.simple_definition}</strong><br>
           ${result.in_chinese}<br><br>
