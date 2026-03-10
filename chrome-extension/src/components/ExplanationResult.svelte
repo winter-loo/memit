@@ -251,7 +251,8 @@
     margin: 0;
   }
 
-  .phonetic-line {
+
+.phonetic-line {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);

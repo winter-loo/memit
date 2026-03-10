@@ -176,6 +176,7 @@ const modalProps = $state<ModalProps>({
 
     const updated: DictionaryResponse = {
       ...modalProps.result,
+      word: replaceIn(modalProps.result.word),
       simple_definition: replaceIn(modalProps.result.simple_definition),
       detailed_explanation: replaceIn(modalProps.result.detailed_explanation),
       in_chinese: replaceIn(modalProps.result.in_chinese),
