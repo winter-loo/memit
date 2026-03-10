@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MODEL_GROUPS } from './lib/explanation/models';
+  import LANGUAGE_NAMES from './lib/languages.json';
   import { Check, Languages, Loader2, XCircle } from '@lucide/svelte';
   import { AnkiClient } from './lib/anki/client';
 
@@ -181,10 +182,9 @@
         </div>
         <div class="setting-action">
           <select id="language" bind:value={settings.preferredLanguage}>
-            <option value="zh-CN">Chinese (Simplified)</option>
-            <option value="zh-TW">Chinese (Traditional)</option>
-            <option value="en">English</option>
-            <option value="ja">Japanese</option>
+            {#each Object.entries(LANGUAGE_NAMES) as [code, name] (code)}
+              <option value={code}>{name}</option>
+            {/each}
           </select>
         </div>
       </div>

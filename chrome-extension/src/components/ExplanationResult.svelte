@@ -109,7 +109,7 @@
     </div>
     <div class="def-group">
       <h4 class="label">Translation</h4>
-      <p class="text-primary font-bold">{result.in_chinese}</p>
+      <p class="text-primary font-bold">{result.translation}</p>
     </div>
   </div>
 

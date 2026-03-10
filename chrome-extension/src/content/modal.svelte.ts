@@ -179,7 +179,7 @@ const modalProps = $state<ModalProps>({
       term: replaceIn(modalProps.result.term),
       simple_definition: replaceIn(modalProps.result.simple_definition),
       detailed_explanation: replaceIn(modalProps.result.detailed_explanation),
-      in_chinese: replaceIn(modalProps.result.in_chinese),
+      translation: replaceIn(modalProps.result.translation),
       etymology: replaceIn(modalProps.result.etymology),
       context_usage: replaceIn(modalProps.result.context_usage),
       examples: modalProps.result.examples.map(replaceIn),

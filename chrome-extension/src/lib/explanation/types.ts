@@ -4,7 +4,7 @@ export interface DictionaryResponse {
   part_of_speech: string;
   simple_definition: string;
   detailed_explanation: string;
-  in_chinese: string;
+  translation: string;
   etymology: string;
   examples: string[];
   synonyms: string[];
@@ -25,5 +25,5 @@ export interface ResponseEntry {
 export interface ContentExplainer {
   id: string;
   name: string;
-  explain(text: string, options?: { modelId?: string }): Promise<DictionaryResponse>;
+  explain(text: string, options?: { modelId?: string; targetLanguage?: string }): Promise<DictionaryResponse>;
 }

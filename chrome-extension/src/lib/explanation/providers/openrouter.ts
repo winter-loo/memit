@@ -1,8 +1,10 @@
 import type { ContentExplainer, DictionaryResponse } from '../types';
+import { buildExplainPrompt } from './prompt';
 
 export interface OpenRouterOptions {
   modelId?: string;
   apiKey?: string;
+  targetLanguage?: string;
 }
 
 export class OpenRouterExplainer implements ContentExplainer {
@@ -18,25 +20,7 @@ export class OpenRouterExplainer implements ContentExplainer {
       throw new Error('OpenRouter API Key is missing. Please set it in the extension options.');
     }
 
-    const prompt = `
-        You are an advanced English dictionary and linguistic expert.
-        Explain the term or phrase: "${text}".
-
-        Return the response ONLY in raw JSON format (no markdown code blocks) with the following structure:
-        {
-            "term": "${text}",
-            "ipa_pronunciation": "International Phonetic Alphabet representation",
-            "part_of_speech": "noun/verb/adjective etc.",
-            "simple_definition": "A clear, concise definition for a general audience.",
-            "detailed_explanation": "A deeper look into the nuance and usage.",
-            "in_chinese": "中文释义",
-            "etymology": "Brief origin of the word.",
-            "examples": ["Sentence 1", "Sentence 2", "Sentence 3"],
-            "synonyms": ["synonym1", "synonym2"],
-            "antonyms": ["antonym1", "antonym2"],
-            "context_usage": "When to use this term (formal, casual, slang, archaic)."
-        }
-    `;
+    const prompt = buildExplainPrompt(text, options?.targetLanguage);
 
     try {
       const response = await fetch(this.baseUrl, {

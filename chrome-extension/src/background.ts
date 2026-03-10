@@ -1,6 +1,7 @@
 import { MemCoolExplainer } from './lib/explanation/providers/memcool';
 import { OpenRouterExplainer } from './lib/explanation/providers/openrouter';
 import { GeminiExplainer } from './lib/explanation/providers/gemini';
+import { LANGUAGE_NAMES, DEFAULT_LANGUAGE } from './lib/explanation/providers/prompt';
 import { AnkiClient } from './lib/anki/client';
 import { countWords } from './lib/text-utils';
 
@@ -98,15 +99,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     chrome.storage.sync.get(
-      ['modelId', 'openRouterApiKey', 'geminiApiKey', 'ankiBackendUrl'],
+      ['modelId', 'openRouterApiKey', 'geminiApiKey', 'ankiBackendUrl', 'preferredLanguage'],
       (settings: {
         modelId?: string;
         openRouterApiKey?: string;
         geminiApiKey?: string;
         ankiBackendUrl?: string;
+        preferredLanguage?: string;
       }) => {
         const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
         const ankiBackendUrl = settings.ankiBackendUrl || DEFAULT_MEMSTORE_URL;
+        const targetLanguage = LANGUAGE_NAMES[settings.preferredLanguage ?? ''] ?? DEFAULT_LANGUAGE;
 
         memcool.setBaseUrl(ankiBackendUrl);
 
@@ -118,7 +121,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         let actualModelId;
 
-        const options: { apiKey?: string; modelId?: string } = {};
+        const options: { apiKey?: string; modelId?: string; targetLanguage?: string } = { targetLanguage };
 
         if (modelId.startsWith('openrouter:')) {
           explainer = openrouter;

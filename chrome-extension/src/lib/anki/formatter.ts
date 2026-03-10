@@ -11,7 +11,7 @@ export function formatExplanationToHtml(data: DictionaryResponse): string {
   }
 
   html += `<p><strong>Definition:</strong> ${data.simple_definition}</p>`;
-  html += `<p><strong>Translation:</strong> ${data.in_chinese}</p>`;
+  html += `<p><strong>Translation:</strong> ${data.translation}</p>`;
 
   html += `<hr><p>${data.detailed_explanation}</p>`;
 

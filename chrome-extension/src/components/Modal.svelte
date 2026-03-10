@@ -245,7 +245,7 @@
         Front: result.term,
         Back: `
           <strong>${result.simple_definition}</strong><br>
-          ${result.in_chinese}<br><br>
+          ${result.translation}<br><br>
           <em>${result.ipa_pronunciation || ''}</em><br><br>
           ${result.detailed_explanation ? marked.parse(result.detailed_explanation) : ''}
         `,
