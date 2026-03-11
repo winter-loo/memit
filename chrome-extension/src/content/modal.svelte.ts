@@ -390,10 +390,25 @@ export function openModal(text: string) {
   }
 }
 
+// ~40 text columns at ~8px per character
+const COLUMN_OFFSET_PX = 320;
+const MODAL_X_STORAGE_KEY = 'memit-modal-x';
+
+function getSavedModalX(): number | null {
+  try {
+    const saved = localStorage.getItem(MODAL_X_STORAGE_KEY);
+    if (saved !== null) {
+      const parsed = parseFloat(saved);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  } catch {}
+  return null;
+}
+
 function positionModal() {
   const selection = window.getSelection();
-  let left = 0;
-  let top = 0;
+  let left: number;
+  let top: number;
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -401,28 +416,46 @@ function positionModal() {
   const modalHeight = contentContainer!.offsetHeight || 600;
   const margin = 20;
 
+  // Resolve selection rect for Y (and X fallback) positioning
+  let selectionRect: DOMRect | null = null;
   if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    // Push the modal to the far right (or far left) of the viewport
-    // so it doesn't obstruct the reading flow after the selected text.
-    if (viewportWidth - modalWidth - margin > rect.right) {
-      left = viewportWidth - modalWidth - margin;
-    } else if (rect.left - modalWidth - margin > 0) {
-      left = margin;
-    } else {
-      left = (viewportWidth - modalWidth) / 2;
-    }
-    left += window.scrollX;
-    const selectionCenterY = rect.top + rect.height / 2;
+    selectionRect = selection.getRangeAt(0).getBoundingClientRect();
+  }
+
+  // Compute Y: align modal vertically near the selection center
+  if (selectionRect) {
+    const selectionCenterY = selectionRect.top + selectionRect.height / 2;
     const vPct = Math.max(0, Math.min(1, selectionCenterY / viewportHeight));
     top = selectionCenterY - vPct * modalHeight + window.scrollY;
-    const minTop = margin + window.scrollY;
-    const maxTop = viewportHeight - modalHeight - margin + window.scrollY;
-    top = Math.max(minTop, Math.min(maxTop, top));
+  } else {
+    top = (viewportHeight - modalHeight) / 2 + window.scrollY;
+  }
+  top = Math.max(margin + window.scrollY, Math.min(viewportHeight - modalHeight - margin + window.scrollY, top));
+
+  // Compute X: use the user's saved position if present, otherwise offset ~40 columns from selection
+  const savedX = getSavedModalX();
+  if (savedX !== null) {
+    // Re-use saved X but clamp it in case viewport shrank since last time
+    left = Math.max(
+      margin + window.scrollX,
+      Math.min(viewportWidth - modalWidth - margin + window.scrollX, savedX)
+    );
+  } else if (selectionRect) {
+    // Try placing the modal COLUMN_OFFSET_PX to the right of the selection (viewport coords)
+    const rightAttempt = selectionRect.right + COLUMN_OFFSET_PX;
+    // Try placing it COLUMN_OFFSET_PX to the left of the selection (viewport coords)
+    const leftAttempt = selectionRect.left - COLUMN_OFFSET_PX - modalWidth;
+
+    if (rightAttempt + modalWidth + margin <= viewportWidth) {
+      left = rightAttempt + window.scrollX;
+    } else if (leftAttempt >= margin) {
+      left = leftAttempt + window.scrollX;
+    } else {
+      // Neither side has enough room — center horizontally
+      left = (viewportWidth - modalWidth) / 2 + window.scrollX;
+    }
   } else {
     left = (viewportWidth - modalWidth) / 2 + window.scrollX;
-    top = (viewportHeight - modalHeight) / 2 + window.scrollY;
   }
 
   overlayHost!.style.left = `${left}px`;

@@ -58,6 +58,17 @@
   }
 
   function stopDrag() {
+    if (isDragging) {
+      const host = resolveHostElement();
+      if (host) {
+        const x = Number.parseFloat(host.style.left);
+        if (Number.isFinite(x)) {
+          try {
+            localStorage.setItem('memit-modal-x', String(x));
+          } catch {}
+        }
+      }
+    }
     isDragging = false;
   }
 
