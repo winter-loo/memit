@@ -5,7 +5,7 @@
   import { fetchPreparedNotes } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
 
-  /** @typedef {{ simple_definition?: string, in_chinese?: string, [key: string]: any }} ParsedNote */
+  /** @typedef {{ simple_definition?: string, translation?: string, in_chinese?: string, [key: string]: any }} ParsedNote */
   /** @typedef {{ id: string | number, fields?: string[], mtimeSecs?: number, _parsed?: ParsedNote }} Note */
 
   /** @type {Note[]} */
@@ -95,10 +95,10 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div onclick={() => openDetail(note)}>
               <HistoryCard
-                word={{
+                term={{
                   text: note.fields?.[0] || 'Unknown',
                   definition: note._parsed?.simple_definition || 'Processing...',
-                  translation: note._parsed?.in_chinese || ''
+                  translation: note._parsed?.translation || note._parsed?.in_chinese || ''
                 }}
               />
             </div>

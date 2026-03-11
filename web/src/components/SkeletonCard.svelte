@@ -1,12 +1,12 @@
 <script>
-  let { word } = $props();
+  let { term } = $props();
 </script>
 
 <article class="p-6 card-3d-soft rounded-4xl bg-white dark:bg-card-dark group border-primary/30">
   <div class="flex flex-col gap-3">
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-fredoka font-bold tracking-tight text-charcoal dark:text-white">
-        {word}
+        {term}
       </h2>
       <div
         class="flex items-center gap-2 bg-orange-50 dark:bg-midnight-navy/40 px-3 py-1.5 rounded-full border border-orange-100 dark:border-white/5"

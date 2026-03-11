@@ -1,7 +1,7 @@
 <script>
   import { apiFetch, apiFetchAuthed } from '$lib/api';
 
-  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, origins?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
+  /** @typedef {{ term?: string, translation?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, context_usage?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
 
   let { supabase, onNoteAdded, onAdding } = $props();
   const MAX_EXPLAIN_CHARS = 120;
@@ -12,7 +12,7 @@
   /** @type {ExplainResult | null} */
   let explainResult = $state(null);
 
-  async function explainWord() {
+  async function explainTerm() {
     const text = (explainText || '').trim();
     if (!text || charCount > MAX_EXPLAIN_CHARS) return;
 
@@ -39,24 +39,15 @@
   }
 
   async function addExplainedNote() {
-    const front = explainResult?.word || explainText;
-    const back = JSON.stringify({
-      simple_definition: explainResult?.simple_definition || '...',
-      in_chinese: explainResult?.in_chinese || '...',
-      detailed_explanation: explainResult?.detailed_explanation,
-      examples: explainResult?.examples,
-      etymology: explainResult?.etymology || explainResult?.origins,
-      synonyms: explainResult?.synonyms,
-      antonyms: explainResult?.antonyms,
-      ipa_pronunciation: explainResult?.ipa_pronunciation,
-      part_of_speech: explainResult?.part_of_speech
-    });
-
     try {
       await apiFetchAuthed(supabase, '/api/note/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: [front, back] })
+        body: JSON.stringify({
+          explanation: explainResult,
+          highlights: [],
+          page_url: null
+        })
       });
       explainText = '';
       explainResult = null;
@@ -125,7 +116,7 @@
         {charCount} / {MAX_EXPLAIN_CHARS} chars
       </span>
       <button
-        onclick={explainWord}
+        onclick={explainTerm}
         disabled={explainLoading || !explainText.trim() || isOverLimit}
         class="bg-primary btn-3d border-b-primary-dark text-white px-10 py-2.5 rounded-2xl font-fredoka font-bold cursor-pointer uppercase tracking-wider text-sm hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >

@@ -1,9 +1,9 @@
 <script>
   import { onDestroy } from 'svelte';
 
-  let { word, onDelete, onRemoved } = $props();
+  let { term, onDelete, onRemoved } = $props();
 
-  let isPhrase = $derived((word.text || '').trim().split(/\s+/).length >= 2);
+  let isPhrase = $derived((term.text || '').trim().split(/\s+/).length >= 2);
 
   let rootEl = $state(/** @type {HTMLElement | null} */ (null));
   let canvasEl = $state(/** @type {HTMLCanvasElement | null} */ (null));
@@ -287,18 +287,18 @@
           data-dissolve
           class="text-2xl font-fredoka font-bold tracking-tight text-slate-800 dark:text-white leading-tight break-words"
         >
-          {word.text}
+          {term.text}
           <span
             class="text-[12px] font-medium text-slate-400 dark:text-text-muted align-middle ml-1.5 whitespace-nowrap"
-            >{word.addedTime}</span
+            >{term.addedTime}</span
           >
         </h2>
-        {#if word.ipa && !isPhrase}
-          <p data-dissolve class="text-primary font-medium text-sm">{word.ipa}</p>
+        {#if term.ipa && !isPhrase}
+          <p data-dissolve class="text-primary font-medium text-sm">{term.ipa}</p>
         {/if}
       </div>
 
-      {#if word.translation}
+      {#if term.translation}
         <div
           class="bg-orange-50 dark:bg-midnight-navy/40 rounded-2xl p-4 border border-orange-100 dark:border-white/5"
         >
@@ -306,7 +306,7 @@
             Translation
           </p>
           <p data-dissolve class="text-primary font-fredoka font-bold text-lg leading-tight">
-            {word.translation}
+            {term.translation}
           </p>
         </div>
       {/if}
@@ -318,7 +318,7 @@
           Simple Definition
         </p>
         <p data-dissolve class="text-slate-600 dark:text-text-main font-medium leading-relaxed">
-          {word.definition}
+          {term.definition}
         </p>
       </div>
     </div>

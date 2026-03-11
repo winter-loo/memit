@@ -1,1 +1,1 @@
-export const wordDetailsCache = new Map();
+export const termDetailsCache = new Map();

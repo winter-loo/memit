@@ -1,13 +1,13 @@
 <script>
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api';
-  import { wordDetailsCache } from '$lib/cache';
+  import { termDetailsCache } from '$lib/cache';
   import { parseNoteBack } from '$lib/notes';
   import { formatRelativeTime } from '$lib/time';
 
   let { note, onClose } = $props();
 
-  /** @typedef {{ word?: string, in_chinese?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, synonyms?: string[], antonyms?: string[], page_url?: string, highlights?: string[] }} ExplainResult */
+  /** @typedef {{ term?: string, translation?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, context_usage?: string, synonyms?: string[], antonyms?: string[], page_url?: string, highlights?: string[] }} ExplainResult */
 
   /** @type {ExplainResult | null} */
   let details = $state(null);
@@ -66,12 +66,12 @@
     );
   }
 
-  /** @param {Record<string, any>} parsed @param {string} word */
-  function mapParsedToDetails(parsed, word) {
+  /** @param {Record<string, any>} parsed @param {string} term */
+  function mapParsedToDetails(parsed, term) {
     return {
       ...parsed,
-      word,
-      in_chinese: parsed.translation || parsed.in_chinese,
+      term,
+      translation: parsed.translation || parsed.in_chinese,
       simple_definition: parsed.simple_definition,
       ipa_pronunciation: parsed.ipa_pronunciation,
       etymology: parsed.etymology || parsed.origins,
@@ -86,36 +86,37 @@
       loading = false;
       return;
     }
-    const word = note.fields[0];
+    const term = note.fields[0];
 
     // Check if we have pre-parsed JSON in note._parsed
     // (This comes from the list page loading logic or similar)
     if (note._parsed && Object.keys(note._parsed).length > 0) {
-      details = mapParsedToDetails(note._parsed, word);
+      details = mapParsedToDetails(note._parsed, term);
       loading = false;
       return;
     }
 
     // Fallback to cache or live fetch if note._parsed is missing (legacy notes or direct link)
-    if (wordDetailsCache.has(word)) {
-      details = wordDetailsCache.get(word);
+    if (termDetailsCache.has(term)) {
+      details = termDetailsCache.get(term);
       loading = false;
       return;
     }
 
     loading = true;
     try {
-      const parsed = parseNoteBack(note.fields?.[1] || '');
+      const fields = note.fields || [];
+      const parsed = parseNoteBack(fields[fields.length - 1] || '');
       if (Object.keys(parsed).length > 0) {
-        details = mapParsedToDetails(parsed, word);
-        wordDetailsCache.set(word, details);
+        details = mapParsedToDetails(parsed, term);
+        termDetailsCache.set(term, details);
         loading = false;
         return;
       }
 
-      const res = await apiFetch(`/explain/${encodeURIComponent(word)}`);
+      const res = await apiFetch(`/explain/${encodeURIComponent(term)}`);
       details = await res.json();
-      wordDetailsCache.set(word, details);
+      termDetailsCache.set(term, details);
     } catch (e) {
       console.error(e);
       error = 'Could not load additional details.';
@@ -189,7 +190,7 @@
         </p>
         <p class="text-2xl font-fredoka font-bold text-primary flex items-center gap-2">
           <span class="material-symbols-outlined text-xl">translate</span>
-          {details?.in_chinese || 'Translation'}
+          {details?.translation || 'Translation'}
         </p>
 
         {#if details?.page_url}

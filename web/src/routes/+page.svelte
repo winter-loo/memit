@@ -87,7 +87,7 @@
   }
 
   /** @param {string} text */
-  function onAddingWord(text) {
+  function onAddingTerm(text) {
     const tempNote = {
       id: 'temp-' + Date.now(),
       fields: [text, '...'],
@@ -202,7 +202,7 @@
     {#if loadingAuth}
       <AddWordInputSkeleton />
     {:else if session}
-      <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingWord} />
+      <AddWord {supabase} onNoteAdded={loadNotes} onAdding={onAddingTerm} />
     {/if}
     <div class="space-y-6">
       {#if error}
@@ -227,11 +227,11 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div onmousedown={handleMouseDown} onclick={() => handleCardClick(note)}>
               <WordCard
-                word={{
+                term={{
                   text: note.fields?.[0] || 'Unknown',
                   addedTime: formatRelativeTime(note.mtimeSecs),
                   definition: note._parsed?.simple_definition || 'Processing...',
-                  translation: note._parsed?.in_chinese || '',
+                  translation: note._parsed?.translation || note._parsed?.in_chinese || '',
                   ipa: note._parsed?.ipa_pronunciation || ''
                 }}
                 onDelete={() => deleteNote(note.id)}

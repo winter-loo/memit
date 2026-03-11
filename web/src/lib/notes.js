@@ -17,9 +17,11 @@ export function parseNoteBack(rawBack) {
 
 /** @param {{ id?: string | number, fields?: string[] }} note */
 export function withParsedBack(note) {
+  const fields = note.fields || [];
+  const lastField = fields[fields.length - 1] || "";
   return {
     ...note,
-    _parsed: parseNoteBack(note.fields?.[1] || ""),
+    _parsed: parseNoteBack(lastField),
   };
 }
 
