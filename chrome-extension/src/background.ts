@@ -3,6 +3,7 @@ import { OpenRouterExplainer } from './lib/explanation/providers/openrouter';
 import { GeminiExplainer } from './lib/explanation/providers/gemini';
 import { LANGUAGE_NAMES, DEFAULT_LANGUAGE } from './lib/explanation/providers/prompt';
 import { AnkiClient } from './lib/anki/client';
+import type { DictionaryResponse } from './lib/explanation/types';
 import { countWords } from './lib/text-utils';
 
 const memcool = new MemCoolExplainer();
@@ -42,6 +43,18 @@ function isAuthErrorMessage(msg: string): boolean {
     msg.includes('Auth Error: 403') ||
     msg.includes('Missing Bearer token')
   );
+}
+
+function buildAnkiNotePayload(
+  explanation: DictionaryResponse,
+  pageUrl: string | undefined,
+  highlights: string[]
+) {
+  return {
+    explanation,
+    pageUrl,
+    highlights,
+  };
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -109,7 +122,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }) => {
         const modelId = settings.modelId || 'memcool:gemini-2.5-flash-lite';
         const ankiBackendUrl = settings.ankiBackendUrl || DEFAULT_MEMSTORE_URL;
-        const targetLanguage = LANGUAGE_NAMES[settings.preferredLanguage ?? ''] ?? DEFAULT_LANGUAGE;
+        const preferredLanguage = settings.preferredLanguage as keyof typeof LANGUAGE_NAMES | undefined;
+        const targetLanguage = (preferredLanguage ? LANGUAGE_NAMES[preferredLanguage] : undefined) ?? DEFAULT_LANGUAGE;
 
         memcool.setBaseUrl(ankiBackendUrl);
 
@@ -196,7 +210,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ]);
 
       type PendingSave = {
-        term: string;
         explanation: unknown;
         pageUrl?: string;
         highlights?: string[];
@@ -205,7 +218,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const isPendingSave = (v: unknown): v is PendingSave => {
         if (!v || typeof v !== 'object') return false;
         const obj = v as Record<string, unknown>;
-        return typeof obj.term === 'string' && 'explanation' in obj;
+        return 'explanation' in obj;
       };
 
       // Check for pending save request
@@ -218,21 +231,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const highlights = pending.highlights || [];
             const pageUrl = pending.pageUrl;
 
-            const enrichExplanation = (explanation: unknown): unknown => {
-              const base =
-                explanation && typeof explanation === 'object' && !Array.isArray(explanation)
-                  ? (explanation as Record<string, unknown>)
-                  : { explanation };
-
-              const enriched: Record<string, unknown> = { ...base, highlights };
-              if (pageUrl) {
-                enriched.page_url = pageUrl;
-              }
-              return enriched;
-            };
-
-            const rawJson = JSON.stringify(enrichExplanation(pending.explanation));
-
             chrome.storage.sync.get(
               ['ankiBackendUrl'],
               async (syncResult: { ankiBackendUrl?: string }) => {
@@ -241,7 +239,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                 // Validate token first
                 await anki.whoami(token);
-                const noteId = await anki.addNote(pending.term, rawJson, token);
+                const noteId = await anki.addNote(
+                  buildAnkiNotePayload(
+                    pending.explanation as DictionaryResponse,
+                    pageUrl,
+                    highlights
+                  ),
+                  token
+                );
 
                 // Broadcast success to all tabs (original tab picks this up)
                 chrome.tabs.query({}, (tabs) => {
@@ -296,19 +301,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const highlights: string[] = message.highlights || [];
 
-    const withPageUrlAndHighlights = (explanation: unknown): unknown => {
-      if (explanation && typeof explanation === 'object' && !Array.isArray(explanation)) {
-        return {
-          ...(explanation as Record<string, unknown>),
-          page_url: pageUrl,
-          highlights,
-        };
-      }
-      return { explanation, page_url: pageUrl, highlights };
-    };
-
-    const rawJson = JSON.stringify(withPageUrlAndHighlights(message.explanation));
-
     chrome.storage.sync.get(
       ['ankiBackendUrl', 'ankiAuthUrl'],
       (syncResult: { ankiBackendUrl?: string; ankiAuthUrl?: string }) => {
@@ -332,7 +324,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               // Store pending save request before opening login
               chrome.storage.local.set({
                 pendingSave: {
-                  term: message.term,
                   explanation: message.explanation,
                   pageUrl,
                   highlights,
@@ -352,7 +343,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const attemptSave = async (tokenToUse: string): Promise<number> => {
               // Validate token first (lightweight)
               await anki.whoami(tokenToUse);
-              return await anki.addNote(message.term, rawJson, tokenToUse);
+              return await anki.addNote(
+                buildAnkiNotePayload(message.explanation as DictionaryResponse, pageUrl, highlights),
+                tokenToUse
+              );
             };
 
             const firstToken = hasPrimary ? primaryToken : fallbackToken;

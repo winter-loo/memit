@@ -1,3 +1,12 @@
+import type { DictionaryResponse } from '../explanation/types';
+
+export interface AddExplanationNotePayload {
+  explanation: DictionaryResponse;
+  pageUrl?: string;
+  highlights?: string[];
+  deckId?: number;
+}
+
 export class AnkiClient {
   private baseUrl = 'https://memstore.ldd.cool';
 
@@ -30,10 +39,15 @@ export class AnkiClient {
     return await response.json();
   }
 
-  async addNote(front: string, back: string, token: string): Promise<number> {
+  async addNote(payload: AddExplanationNotePayload, token: string): Promise<number> {
     const response = await fetch(this.addNoteUrl, {
       method: 'POST',
-      body: JSON.stringify({ fields: [front, back] }),
+      body: JSON.stringify({
+        explanation: payload.explanation,
+        page_url: payload.pageUrl,
+        highlights: payload.highlights ?? [],
+        deck_id: payload.deckId,
+      }),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
