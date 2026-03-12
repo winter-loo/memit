@@ -17,7 +17,7 @@
   import { getSupabaseClient } from '$lib/supabase';
   import { formatRelativeTime } from '../lib/time';
 
-  /** @typedef {{ id: string | number, fields?: string[], loading?: boolean, _parsed?: Record<string, any>, mtimeSecs?: number }} Note */
+  /** @typedef {{ id: string | number, fields?: Record<string, string>, loading?: boolean, mtimeSecs?: number, _term?: string, _ipa?: string, _translation?: string, _simpleDefinition?: string }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);
@@ -90,7 +90,9 @@
   function onAddingTerm(text) {
     const tempNote = {
       id: 'temp-' + Date.now(),
-      fields: [text, '...'],
+      fields: { Term: text, SimpleDefinition: '...' },
+      _term: text,
+      _simpleDefinition: '...',
       loading: true
     };
     notes = [tempNote, ...notes];
@@ -228,11 +230,11 @@
             <div onmousedown={handleMouseDown} onclick={() => handleCardClick(note)}>
               <WordCard
                 term={{
-                  text: note._front || note.fields?.[0] || 'Unknown',
+                  text: note._term || 'Unknown',
                   addedTime: formatRelativeTime(note.mtimeSecs),
-                  definition: note._parsed?.simple_definition || 'Processing...',
-                  translation: note._parsed?.translation || note._parsed?.in_chinese || '',
-                  ipa: note._parsed?.ipa_pronunciation || ''
+                  definition: note._simpleDefinition || 'Processing...',
+                  translation: note._translation || '',
+                  ipa: note._ipa || ''
                 }}
                 onDelete={() => deleteNote(note.id)}
                 onRemoved={() => removeNoteFromList(note.id)}

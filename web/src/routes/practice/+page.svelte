@@ -1,11 +1,11 @@
 <script>
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { parseNoteBack, withParsedBack } from '$lib/notes';
+  import { withPreparedFields } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
   import { apiFetchAuthed } from '$lib/api';
 
-  /** @typedef {{ id: string | number, fields?: string[] }} Note */
+  /** @typedef {{ id: string | number, fields?: Record<string, string>, _term?: string, _translation?: string, _simpleDefinition?: string, _examples?: string[], _synonyms?: string[], _detailedExplanation?: string, _etymology?: string, _antonyms?: string[] }} Note */
   /** @typedef {{ simple_definition?: string, in_chinese?: string, examples?: string[], synonyms?: string[], detailed_explanation?: string, etymology?: string, antonyms?: string[] }} CardDetails */
 
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
@@ -150,19 +150,15 @@
 
   /** @param {Note} note @returns {CardDetails} */
   function buildCardDetails(note) {
-    const parsedNote = withParsedBack(note);
-    const rawBack = parsedNote._back || '';
-    const parsed = parsedNote._parsed || {};
-    const fallbackDefinition = rawBack && typeof rawBack === 'string' && !rawBack.trim().startsWith('{') ? rawBack : '';
-
+    const prepared = withPreparedFields(note);
     return {
-      simple_definition: (parsed.simple_definition || '').trim() || fallbackDefinition,
-      in_chinese: (parsed.in_chinese || parsed.translation || parsedNote._front || '').trim() || undefined,
-      examples: Array.isArray(parsed.examples) ? parsed.examples.filter(/** @param {any} e */ (e) => typeof e === 'string' && e.trim()) : [],
-      synonyms: Array.isArray(parsed.synonyms) ? parsed.synonyms.filter(/** @param {any} s */ (s) => typeof s === 'string' && s.trim()) : [],
-      detailed_explanation: (parsed.detailed_explanation || '').trim() || undefined,
-      etymology: (parsed.etymology || parsed.origins || '').trim() || undefined,
-      antonyms: Array.isArray(parsed.antonyms) ? parsed.antonyms.filter(/** @param {any} a */ (a) => typeof a === 'string' && a.trim()) : []
+      simple_definition: prepared._simpleDefinition || undefined,
+      in_chinese: prepared._translation || undefined,
+      examples: prepared._examples || [],
+      synonyms: prepared._synonyms || [],
+      detailed_explanation: prepared._detailedExplanation || undefined,
+      etymology: prepared._etymology || undefined,
+      antonyms: prepared._antonyms || []
     };
   }
 
@@ -274,9 +270,9 @@
     loadNextCard();
   }
 
-  let currentNote = $derived(currentCardData?.note || { id: -1, fields: [] });
-  let parsedCurrentNote = $derived(withParsedBack(currentNote));
-  let prompt = $derived(parsedCurrentNote._front || '');
+  let currentNote = $derived(currentCardData?.note || { id: -1, fields: {} });
+  let preparedCurrentNote = $derived(withPreparedFields(currentNote));
+  let prompt = $derived(preparedCurrentNote._term || '');
   let cardDetails = $derived(buildCardDetails(currentNote));
   let progress = $derived.by(() => {
     const total = initialDueTotal ?? 0;

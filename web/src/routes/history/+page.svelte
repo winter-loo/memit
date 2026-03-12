@@ -5,8 +5,7 @@
   import { fetchPreparedNotes } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
 
-  /** @typedef {{ simple_definition?: string, translation?: string, in_chinese?: string, [key: string]: any }} ParsedNote */
-  /** @typedef {{ id: string | number, fields?: string[], mtimeSecs?: number, _parsed?: ParsedNote }} Note */
+  /** @typedef {{ id: string | number, fields?: Record<string, string>, mtimeSecs?: number, _term?: string, _translation?: string, _simpleDefinition?: string }} Note */
 
   /** @type {Note[]} */
   let notes = $state([]);
@@ -96,9 +95,9 @@
             <div onclick={() => openDetail(note)}>
               <HistoryCard
                 term={{
-                  text: note._front || note.fields?.[0] || 'Unknown',
-                  definition: note._parsed?.simple_definition || 'Processing...',
-                  translation: note._parsed?.translation || note._parsed?.in_chinese || ''
+                  text: note._term || 'Unknown',
+                  definition: note._simpleDefinition || 'Processing...',
+                  translation: note._translation || ''
                 }}
               />
             </div>

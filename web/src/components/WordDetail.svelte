@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api';
   import { termDetailsCache } from '$lib/cache';
-  import { parseNoteBack } from '$lib/notes';
+  import { withPreparedFields } from '$lib/notes';
   import { formatRelativeTime } from '$lib/time';
 
   let { note, onClose } = $props();
@@ -66,56 +66,53 @@
     );
   }
 
-  /** @param {Record<string, any>} parsed @param {string} term */
-  function mapParsedToDetails(parsed, term) {
+  /** @param {any} prepared */
+  function mapPreparedNoteToDetails(prepared) {
     return {
-      ...parsed,
-      term,
-      translation: parsed.translation || parsed.in_chinese,
-      simple_definition: parsed.simple_definition,
-      ipa_pronunciation: parsed.ipa_pronunciation,
-      etymology: parsed.etymology || parsed.origins,
-      page_url: parsed.page_url || parsed.pageUrl,
-      highlights: parsed.highlights || []
+      term: prepared._term,
+      translation: prepared._translation,
+      simple_definition: prepared._simpleDefinition,
+      ipa_pronunciation: prepared._ipa,
+      detailed_explanation: prepared._detailedExplanation,
+      etymology: prepared._etymology,
+      context_usage: prepared._contextUsage,
+      examples: prepared._examples || [],
+      synonyms: prepared._synonyms || [],
+      antonyms: prepared._antonyms || [],
+      page_url: prepared._sourceUrl,
+      highlights: prepared._highlights || []
     };
   }
 
   async function loadDetails() {
     error = '';
-    if (!note?.fields?.[0]) {
-      loading = false;
-      return;
-    }
-    const term = note.fields[0];
-
-    // Check if we have pre-parsed JSON in note._parsed
-    // (This comes from the list page loading logic or similar)
-    if (note._parsed && Object.keys(note._parsed).length > 0) {
-      details = mapParsedToDetails(note._parsed, term);
+    const prepared = withPreparedFields(note || {});
+    const term = prepared._term;
+    if (!term) {
       loading = false;
       return;
     }
 
-    // Fallback to cache or live fetch if note._parsed is missing (legacy notes or direct link)
+    details = mapPreparedNoteToDetails(prepared);
+
     if (termDetailsCache.has(term)) {
-      details = termDetailsCache.get(term);
+      details = { ...details, ...termDetailsCache.get(term) };
+      loading = false;
+      return;
+    }
+
+    // Current API already gives us the detail fields we need.
+    // Only fall back to /explain if the note is unusually sparse.
+    if (details.simple_definition || details.translation || details.detailed_explanation) {
+      termDetailsCache.set(term, details);
       loading = false;
       return;
     }
 
     loading = true;
     try {
-      const fields = note.fields || [];
-      const parsed = parseNoteBack(fields[fields.length - 1] || '');
-      if (Object.keys(parsed).length > 0) {
-        details = mapParsedToDetails(parsed, term);
-        termDetailsCache.set(term, details);
-        loading = false;
-        return;
-      }
-
       const res = await apiFetch(`/explain/${encodeURIComponent(term)}`);
-      details = await res.json();
+      details = { ...details, ...(await res.json()) };
       termDetailsCache.set(term, details);
     } catch (e) {
       console.error(e);
@@ -179,12 +176,12 @@
           >
         </div>
         <h2 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white mb-2">
-          {note.fields?.[0]}
+          {details?.term || note.fields?.Term || 'Unknown'}
         </h2>
         <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html highlightText(
-            details?.simple_definition || note.fields?.[1] || '',
+            details?.simple_definition || note.fields?.SimpleDefinition || '',
             details?.highlights
           )}
         </p>
@@ -293,7 +290,7 @@
             >
           </div>
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed italic">
-            {details?.etymology || `Etymology information for ${note.fields?.[0]} not available.`}
+            {details?.etymology || `Etymology information for ${details?.term || note.fields?.Term || 'this term'} not available.`}
           </p>
         </div>
       </div>

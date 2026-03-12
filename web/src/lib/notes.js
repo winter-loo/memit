@@ -5,57 +5,66 @@ export function normalizeNotes(value) {
   return Array.isArray(value) ? value : [];
 }
 
-/** @param {string | undefined | null} rawBack */
-export function parseNoteBack(rawBack) {
-  if (!rawBack) return {};
-  try {
-    return JSON.parse(rawBack);
-  } catch {
-    return {};
-  }
+/** @param {string | undefined | null} value */
+export function decodeFieldText(value) {
+  if (!value) return "";
+  return String(value)
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
-/** @param {{ id?: string | number, fields?: string[] | Record<string,string>, field_values?: string[] }} note */
-export function withParsedBack(note) {
-  let front = "";
-  let back = "";
+/** @param {string | undefined | null} value */
+export function splitFieldLines(value) {
+  return decodeFieldText(value)
+    .split(/\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
-  if (Array.isArray(note.field_values) && note.field_values.length >= 1) {
-    // New API format: field_values array
-    front = note.field_values[0] || "";
-    back = note.field_values[note.field_values.length - 1] || "";
-  } else if (note.fields && !Array.isArray(note.fields)) {
-    // Object format: { Front, Back }
-    const f = /** @type {Record<string,string>} */ (note.fields);
-    front = f["Front"] || f["front"] || "";
-    back = f["Back"] || f["back"] || "";
-  } else if (Array.isArray(note.fields)) {
-    // Legacy array format
-    const arr = note.fields;
-    front = arr[0] || "";
-    back = arr[arr.length - 1] || "";
-  }
+/** @param {string | undefined | null} value */
+export function splitInlineList(value) {
+  return decodeFieldText(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
-  // id is a timestamp in milliseconds (e.g. 1771234024960)
+/** @param {{ id?: string | number, fields?: Record<string, string>, mtimeSecs?: number }} note */
+export function withPreparedFields(note) {
+  const fields = note.fields || {};
+
   const mtimeSecs = typeof note.id === "number" && note.id > 1e12
     ? Math.floor(note.id / 1000)
     : (note.mtimeSecs ?? null);
 
   return {
     ...note,
-    // Expose normalized front/back so the template can use note._front directly
-    _front: front,
-    _back: back,
-    _parsed: parseNoteBack(back),
     mtimeSecs,
+    _term: decodeFieldText(fields.Term),
+    _ipa: decodeFieldText(fields.IPA),
+    _translation: decodeFieldText(fields.Translation),
+    _simpleDefinition: decodeFieldText(fields.SimpleDefinition),
+    _detailedExplanation: decodeFieldText(fields.DetailedExplanation),
+    _examples: splitFieldLines(fields.ExamplesAll),
+    _synonyms: splitInlineList(fields.Synonyms),
+    _antonyms: splitInlineList(fields.Antonyms),
+    _contextUsage: decodeFieldText(fields.ContextUsage),
+    _etymology: decodeFieldText(fields.Etymology),
+    _sourceUrl: decodeFieldText(fields.SourceUrl),
+    _highlights: splitFieldLines(fields.Highlights),
   };
 }
 
 /** @param {unknown} value */
-export function prepareNotesWithParsedBack(value) {
+export function prepareNotes(value) {
   return normalizeNotes(value)
     .sort((a, b) => Number(b.id) - Number(a.id))
-    .map((note) => withParsedBack(note));
+    .map((note) => withPreparedFields(note));
 }
 
 /**
@@ -70,5 +79,5 @@ export async function fetchNotes(supabase) {
  * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
  */
 export async function fetchPreparedNotes(supabase) {
-  return prepareNotesWithParsedBack(await fetchNotes(supabase));
+  return prepareNotes(await fetchNotes(supabase));
 }
