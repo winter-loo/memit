@@ -6,7 +6,7 @@
   import { apiFetchAuthed } from '$lib/api';
 
   /** @typedef {{ id: string | number, fields?: Record<string, string>, _term?: string, _translation?: string, _simpleDefinition?: string, _examples?: string[], _synonyms?: string[], _detailedExplanation?: string, _etymology?: string, _antonyms?: string[] }} Note */
-  /** @typedef {{ simple_definition?: string, in_chinese?: string, examples?: string[], synonyms?: string[], detailed_explanation?: string, etymology?: string, antonyms?: string[] }} CardDetails */
+  /** @typedef {{ simpleDefinition?: string, translation?: string, examples?: string[], synonyms?: string[], detailedExplanation?: string, etymology?: string, antonyms?: string[] }} CardDetails */
 
   let view = $state('loading'); // loading, question, answer, complete, unauthenticated
   let currentCardData = $state(
@@ -152,11 +152,11 @@
   function buildCardDetails(note) {
     const prepared = withPreparedFields(note);
     return {
-      simple_definition: prepared._simpleDefinition || undefined,
-      in_chinese: prepared._translation || undefined,
+      simpleDefinition: prepared._simpleDefinition || undefined,
+      translation: prepared._translation || undefined,
       examples: prepared._examples || [],
       synonyms: prepared._synonyms || [],
-      detailed_explanation: prepared._detailedExplanation || undefined,
+      detailedExplanation: prepared._detailedExplanation || undefined,
       etymology: prepared._etymology || undefined,
       antonyms: prepared._antonyms || []
     };
@@ -503,20 +503,20 @@
                 aria-hidden={!revealed}
               >
                 <!-- 1. Simple Definition -->
-                {#if cardDetails.simple_definition}
+                {#if cardDetails.simpleDefinition}
                   <div>
                     <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Definition</p>
                     <p class="max-w-[38rem] text-lg leading-8 text-slate-800 dark:text-slate-100 sm:text-xl sm:leading-9">
-                      {cardDetails.simple_definition}
+                      {cardDetails.simpleDefinition}
                     </p>
                   </div>
                 {/if}
 
                 <!-- 2. Translation -->
-                {#if cardDetails.in_chinese}
+                {#if cardDetails.translation}
                   <p class="text-xl font-bold text-primary flex items-center gap-2 font-fredoka">
                     <span class="material-symbols-outlined text-lg">translate</span>
-                    {cardDetails.in_chinese}
+                    {cardDetails.translation}
                   </p>
                 {/if}
 
@@ -548,11 +548,11 @@
                 {/if}
 
                 <!-- 5. Detailed Explanation -->
-                {#if cardDetails.detailed_explanation}
+                {#if cardDetails.detailedExplanation}
                   <div>
                     <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400 mb-3">Explanation</p>
                     <p class="text-sm leading-7 text-slate-600 dark:text-slate-400">
-                      {cardDetails.detailed_explanation}
+                      {cardDetails.detailedExplanation}
                     </p>
                   </div>
                 {/if}

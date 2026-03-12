@@ -1,7 +1,7 @@
 <script>
   import { apiFetch, apiFetchAuthed } from '$lib/api';
 
-  /** @typedef {{ term?: string, translation?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, context_usage?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
+  /** @typedef {{ term?: string, translation?: string, simpleDefinition?: string, detailedExplanation?: string, ipaPronunciation?: string, partOfSpeech?: string, examples?: string[], error?: string, etymology?: string, contextUsage?: string, synonyms?: string[], antonyms?: string[] }} ExplainResult */
 
   let { supabase, onNoteAdded, onAdding } = $props();
   const MAX_EXPLAIN_CHARS = 120;

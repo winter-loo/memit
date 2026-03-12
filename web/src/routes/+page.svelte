@@ -90,7 +90,7 @@
   function onAddingTerm(text) {
     const tempNote = {
       id: 'temp-' + Date.now(),
-      fields: { Term: text, SimpleDefinition: '...' },
+      fields: { term: text, simpleDefinition: '...' },
       _term: text,
       _simpleDefinition: '...',
       loading: true

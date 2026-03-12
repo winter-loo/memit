@@ -7,7 +7,7 @@
 
   let { note, onClose } = $props();
 
-  /** @typedef {{ term?: string, translation?: string, simple_definition?: string, detailed_explanation?: string, ipa_pronunciation?: string, part_of_speech?: string, examples?: string[], error?: string, etymology?: string, context_usage?: string, synonyms?: string[], antonyms?: string[], page_url?: string, highlights?: string[] }} ExplainResult */
+  /** @typedef {{ term?: string, translation?: string, simpleDefinition?: string, detailedExplanation?: string, ipaPronunciation?: string, partOfSpeech?: string, examples?: string[], error?: string, etymology?: string, contextUsage?: string, synonyms?: string[], antonyms?: string[], pageUrl?: string, highlights?: string[] }} ExplainResult */
 
   /** @type {ExplainResult | null} */
   let details = $state(null);
@@ -71,15 +71,15 @@
     return {
       term: prepared._term,
       translation: prepared._translation,
-      simple_definition: prepared._simpleDefinition,
-      ipa_pronunciation: prepared._ipa,
-      detailed_explanation: prepared._detailedExplanation,
+      simpleDefinition: prepared._simpleDefinition,
+      ipaPronunciation: prepared._ipa,
+      detailedExplanation: prepared._detailedExplanation,
       etymology: prepared._etymology,
-      context_usage: prepared._contextUsage,
+      contextUsage: prepared._contextUsage,
       examples: prepared._examples || [],
       synonyms: prepared._synonyms || [],
       antonyms: prepared._antonyms || [],
-      page_url: prepared._sourceUrl,
+      pageUrl: prepared._sourceUrl,
       highlights: prepared._highlights || []
     };
   }
@@ -103,7 +103,7 @@
 
     // Current API already gives us the detail fields we need.
     // Only fall back to /explain if the note is unusually sparse.
-    if (details.simple_definition || details.translation || details.detailed_explanation) {
+    if (details.simpleDefinition || details.translation || details.detailedExplanation) {
       termDetailsCache.set(term, details);
       loading = false;
       return;
@@ -176,12 +176,12 @@
           >
         </div>
         <h2 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white mb-2">
-          {details?.term || note.fields?.Term || 'Unknown'}
+          {details?.term || note.fields?.term || 'Unknown'}
         </h2>
         <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html highlightText(
-            details?.simple_definition || note.fields?.SimpleDefinition || '',
+            details?.simpleDefinition || note.fields?.simpleDefinition || '',
             details?.highlights
           )}
         </p>
@@ -190,15 +190,15 @@
           {details?.translation || 'Translation'}
         </p>
 
-        {#if details?.page_url}
+        {#if details?.pageUrl}
           <!-- eslint-disable svelte/no-navigation-without-resolve -->
           <a
             class="mt-2 inline-block text-sm text-slate-400 hover:text-primary underline break-all"
-            href={details.page_url}
+            href={details.pageUrl}
             target="_blank"
             rel="noreferrer"
           >
-            Source: {details.page_url}
+            Source: {details.pageUrl}
           </a>
           <!-- eslint-enable svelte/no-navigation-without-resolve -->
         {/if}
@@ -232,7 +232,7 @@
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html highlightText(
-              details?.detailed_explanation || 'No detailed explanation available.',
+              details?.detailedExplanation || 'No detailed explanation available.',
               details?.highlights
             )}
           </p>
@@ -290,7 +290,7 @@
             >
           </div>
           <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed italic">
-            {details?.etymology || `Etymology information for ${details?.term || note.fields?.Term || 'this term'} not available.`}
+            {details?.etymology || `Etymology information for ${details?.term || note.fields?.term || 'this term'} not available.`}
           </p>
         </div>
       </div>
