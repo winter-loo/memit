@@ -244,10 +244,10 @@
       fields: {
         Front: result.term,
         Back: `
-          <strong>${result.simple_definition}</strong><br>
+          <strong>${result.simpleDefinition}</strong><br>
           ${result.translation}<br><br>
-          <em>${result.ipa_pronunciation || ''}</em><br><br>
-          ${result.detailed_explanation ? marked.parse(result.detailed_explanation) : ''}
+          <em>${result.ipaPronunciation || ''}</em><br><br>
+          ${result.detailedExplanation ? marked.parse(result.detailedExplanation) : ''}
         `,
         tags: ['memit'],
       },

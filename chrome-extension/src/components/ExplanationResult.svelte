@@ -32,13 +32,13 @@
   }
 
   let displayIPA = $derived(
-    result.ipa_pronunciation && result.ipa_pronunciation.length > 27
-      ? result.ipa_pronunciation.substring(0, 17) + '...' + result.ipa_pronunciation.slice(-10)
-      : result.ipa_pronunciation
+    result.ipaPronunciation && result.ipaPronunciation.length > 27
+      ? result.ipaPronunciation.substring(0, 17) + '...' + result.ipaPronunciation.slice(-10)
+      : result.ipaPronunciation
   );
 
   const detailedExplanationHtml = $derived.by(() => {
-    const rawHtml = marked.parse(result.detailed_explanation ?? '', { breaks: true }) as string;
+    const rawHtml = marked.parse(result.detailedExplanation ?? '', { breaks: true }) as string;
     return DOMPurify.sanitize(rawHtml);
   });
 
@@ -105,7 +105,7 @@
           {/if}
         </div>
       </div>
-      <p class="text">{result.simple_definition}</p>
+      <p class="text">{result.simpleDefinition}</p>
     </div>
     <div class="def-group">
       <h4 class="label">Translation</h4>
@@ -164,14 +164,14 @@
         </div>
       </section>
 
-      {#if result.context_usage}
+      {#if result.contextUsage}
         <section class="section">
           <div class="section-header">
             <Brain size={18} class="icon-orange" />
             <h3 class="section-title">Context Usage</h3>
           </div>
           <div class="context-card">
-            <p class="context-text">{result.context_usage}</p>
+            <p class="context-text">{result.contextUsage}</p>
           </div>
         </section>
       {/if}

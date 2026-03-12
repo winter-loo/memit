@@ -1,15 +1,15 @@
 export interface DictionaryResponse {
   term: string;
-  ipa_pronunciation: string;
-  part_of_speech: string;
-  simple_definition: string;
-  detailed_explanation: string;
+  ipaPronunciation: string;
+  partOfSpeech: string;
+  simpleDefinition: string;
+  detailedExplanation: string;
   translation: string;
   etymology: string;
   examples: string[];
   synonyms: string[];
   antonyms: string[];
-  context_usage: string;
+  contextUsage: string;
   error?: string;
 }
 
