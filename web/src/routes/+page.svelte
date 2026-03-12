@@ -228,7 +228,7 @@
             <div onmousedown={handleMouseDown} onclick={() => handleCardClick(note)}>
               <WordCard
                 term={{
-                  text: note.fields?.[0] || 'Unknown',
+                  text: note._front || note.fields?.[0] || 'Unknown',
                   addedTime: formatRelativeTime(note.mtimeSecs),
                   definition: note._parsed?.simple_definition || 'Processing...',
                   translation: note._parsed?.translation || note._parsed?.in_chinese || '',

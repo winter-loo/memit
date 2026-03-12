@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { parseNoteBack } from '$lib/notes';
+  import { parseNoteBack, withParsedBack } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
   import { apiFetchAuthed } from '$lib/api';
 
@@ -150,13 +150,14 @@
 
   /** @param {Note} note @returns {CardDetails} */
   function buildCardDetails(note) {
-    const rawBack = note?.fields?.[1] || '';
-    const parsed = parseNoteBack(rawBack);
+    const parsedNote = withParsedBack(note);
+    const rawBack = parsedNote._back || '';
+    const parsed = parsedNote._parsed || {};
     const fallbackDefinition = rawBack && typeof rawBack === 'string' && !rawBack.trim().startsWith('{') ? rawBack : '';
 
     return {
       simple_definition: (parsed.simple_definition || '').trim() || fallbackDefinition,
-      in_chinese: (parsed.in_chinese || parsed.translation || note?.fields?.[2] || '').trim() || undefined,
+      in_chinese: (parsed.in_chinese || parsed.translation || parsedNote._front || '').trim() || undefined,
       examples: Array.isArray(parsed.examples) ? parsed.examples.filter(/** @param {any} e */ (e) => typeof e === 'string' && e.trim()) : [],
       synonyms: Array.isArray(parsed.synonyms) ? parsed.synonyms.filter(/** @param {any} s */ (s) => typeof s === 'string' && s.trim()) : [],
       detailed_explanation: (parsed.detailed_explanation || '').trim() || undefined,
@@ -274,7 +275,8 @@
   }
 
   let currentNote = $derived(currentCardData?.note || { id: -1, fields: [] });
-  let prompt = $derived(currentNote.fields?.[0] || '');
+  let parsedCurrentNote = $derived(withParsedBack(currentNote));
+  let prompt = $derived(parsedCurrentNote._front || '');
   let cardDetails = $derived(buildCardDetails(currentNote));
   let progress = $derived.by(() => {
     const total = initialDueTotal ?? 0;

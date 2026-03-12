@@ -96,7 +96,7 @@
             <div onclick={() => openDetail(note)}>
               <HistoryCard
                 term={{
-                  text: note.fields?.[0] || 'Unknown',
+                  text: note._front || note.fields?.[0] || 'Unknown',
                   definition: note._parsed?.simple_definition || 'Processing...',
                   translation: note._parsed?.translation || note._parsed?.in_chinese || ''
                 }}
