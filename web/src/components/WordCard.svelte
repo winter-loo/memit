@@ -266,7 +266,7 @@
 
 <article
   bind:this={rootEl}
-  class="relative p-6 card-3d-soft rounded-4xl group cursor-pointer"
+  class="relative overflow-hidden p-6 card-3d-soft rounded-4xl group cursor-pointer"
   class:bg-white={phase === 'idle'}
   class:dark:bg-card-dark={phase === 'idle'}
   class:bg-transparent={phase !== 'idle'}
