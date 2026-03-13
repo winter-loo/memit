@@ -77,6 +77,24 @@ export async function fetchNotes(supabase) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
+ * @param {{ limit?: number, cursor?: string | number | null }} [options]
+ */
+export async function fetchNotesPage(supabase, options = {}) {
+  const params = new URLSearchParams();
+  if (options.limit != null) params.set('limit', String(options.limit));
+  if (options.cursor != null && options.cursor !== '') params.set('cursor', String(options.cursor));
+  const suffix = params.size ? `?${params.toString()}` : '';
+  const res = await apiFetchAuthed(supabase, `/api/note/list${suffix}`);
+  const data = await res.json();
+  return {
+    items: prepareNotes(data?.items),
+    hasMore: Boolean(data?.hasMore),
+    nextCursor: data?.nextCursor ?? null,
+  };
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
  */
 export async function fetchPreparedNotes(supabase) {
   return prepareNotes(await fetchNotes(supabase));

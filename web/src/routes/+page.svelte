@@ -13,7 +13,7 @@
 
   import { apiFetchAuthed } from '$lib/api';
   import { isExtensionAuthFlowHref } from '$lib/extension-auth';
-  import { fetchPreparedNotes } from '$lib/notes';
+  import { fetchNotesPage } from '$lib/notes';
   import { getSupabaseClient } from '$lib/supabase';
   import { formatRelativeTime } from '../lib/time';
 
@@ -22,6 +22,7 @@
   /** @type {Note[]} */
   let notes = $state([]);
   let loadingNotes = $state(true);
+  let loadingMore = $state(false);
   let loadingAuth = $state(true);
   let error = $state(''); // Error state for note loading
   /** @type {import('@supabase/supabase-js').SupabaseClient | undefined} */
@@ -30,7 +31,11 @@
   let session = $state(null);
   /** @type {Note | null} */
   let selectedNote = $state(null);
+  let hasMore = $state(false);
+  let nextCursor = $state(null);
+  let loadMoreSentinel = $state();
 
+  const PAGE_SIZE = 10;
   let clickStartTime = 0;
 
   let isExtensionAuthFlow = $derived.by(() => isExtensionAuthFlowHref(page.url.href));
@@ -46,7 +51,10 @@
     loadingNotes = true;
     error = '';
     try {
-      notes = /** @type {Note[]} */ (await fetchPreparedNotes(supabase));
+      const page = await fetchNotesPage(supabase, { limit: PAGE_SIZE });
+      notes = /** @type {Note[]} */ (page.items);
+      hasMore = page.hasMore;
+      nextCursor = page.nextCursor;
     } catch (e) {
       console.error(e);
       const msg = e instanceof Error ? e.message : String(e);
@@ -62,6 +70,26 @@
       }
     } finally {
       loadingNotes = false;
+    }
+  }
+
+  async function loadMoreNotes() {
+    if (!supabase || loadingNotes || loadingMore || !hasMore || !nextCursor) return;
+    loadingMore = true;
+    try {
+      const page = await fetchNotesPage(supabase, { limit: PAGE_SIZE, cursor: nextCursor });
+      const seen = new Set(notes.map((note) => String(note.id)));
+      const incoming = /** @type {Note[]} */ (
+        page.items.filter((note) => note.id != null && !seen.has(String(note.id)))
+      );
+      notes = [...notes, ...incoming];
+      hasMore = page.hasMore;
+      nextCursor = page.nextCursor;
+    } catch (e) {
+      console.error(e);
+      error = 'Failed to load more notes. Please try again.';
+    } finally {
+      loadingMore = false;
     }
   }
 
@@ -84,6 +112,23 @@
   /** @param {string | number} noteId */
   function removeNoteFromList(noteId) {
     notes = notes.filter((n) => n.id !== noteId);
+  }
+
+  function setupInfiniteScroll() {
+    if (typeof IntersectionObserver === 'undefined' || !loadMoreSentinel) return () => {};
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting) {
+          void loadMoreNotes();
+        }
+      },
+      { rootMargin: '200px 0px' }
+    );
+
+    observer.observe(loadMoreSentinel);
+    return () => observer.disconnect();
   }
 
   /** @param {string} text */
@@ -169,6 +214,11 @@
       clearTimeout(timeout);
     };
   });
+
+  $effect(() => {
+    if (!session || !loadMoreSentinel || !hasMore) return;
+    return setupInfiniteScroll();
+  });
 </script>
 
 {#if !loadingAuth && !session}
@@ -242,6 +292,28 @@
             </div>
           {/if}
         {/each}
+
+        {#if notes.length > 0}
+          <div bind:this={loadMoreSentinel} class="h-1 w-full"></div>
+
+          {#if loadingMore}
+            <div class="text-center text-slate-500 py-2">Loading more cards...</div>
+          {/if}
+
+          {#if hasMore}
+            <div class="flex justify-center pt-2">
+              <button
+                class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                onclick={loadMoreNotes}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </button>
+            </div>
+          {:else}
+            <div class="text-center text-slate-500 py-2">No more cards</div>
+          {/if}
+        {/if}
       {/if}
     </div>
   </div>
