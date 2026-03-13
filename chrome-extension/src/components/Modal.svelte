@@ -6,7 +6,7 @@
   import RetryModelSelector from './RetryModelSelector.svelte';
   import SelectionToolbar from './SelectionToolbar.svelte';
   import Skeleton from './Skeleton.svelte';
-  import { countWords } from '../lib/text-utils';
+  import { getSelectionMetrics, MAX_SELECTION_CHARS, MAX_SELECTION_WORDS } from '../lib/text-utils';
   import {
     CircleX,
     CloudAlert,
@@ -124,7 +124,7 @@
   // eslint-disable-next-line svelte/prefer-writable-derived
   let localText = $state('');
 
-  const localWordCount = $derived(countWords(localText));
+  const localSelectionMetrics = $derived(getSelectionMetrics(localText));
   const isTooLongError = $derived(error.toLowerCase().includes('too long'));
   const PRACTICE_URL = 'https://memit.ldd.cool/practice';
   const MIN_ANKI_EXPORT_FEEDBACK_MS = 1400;
@@ -456,7 +456,9 @@
 
       {#if error && isTooLongError}
         <p class="hint-message">
-          The text should have at most 20 words and current length is {localWordCount}.
+          Keep it within {MAX_SELECTION_WORDS} words or {MAX_SELECTION_CHARS} characters.
+          Current length:
+          {localSelectionMetrics.words} words / {localSelectionMetrics.chars} chars.
         </p>
       {:else if error}
         <p class="error-message">{error}</p>

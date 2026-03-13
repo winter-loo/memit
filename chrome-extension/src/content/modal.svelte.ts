@@ -1,7 +1,7 @@
 import { mount, unmount } from 'svelte';
 import Modal from '../components/Modal.svelte';
 import appCss from '../app.css?inline';
-import { countWords } from '../lib/text-utils';
+import { getSelectionLengthError } from '../lib/text-utils';
 import type { DictionaryResponse } from '../lib/explanation/types';
 
 console.log('Screen Text Reader: Modal content script loaded.');
@@ -110,11 +110,10 @@ const modalProps = $state<ModalProps>({
   ) => {
     const previousText = modalProps.text;
     const textToUse = newText !== undefined ? newText : modalProps.text;
-    const wordCount = countWords(textToUse);
-    const maxWords = 20;
+    const lengthError = getSelectionLengthError(textToUse);
 
-    if (wordCount > maxWords) {
-      modalProps.error = `Selection too long (${wordCount} words). Please select less than ${maxWords} words.`;
+    if (lengthError) {
+      modalProps.error = lengthError;
       modalProps.isProviderError = false;
       modalProps.text = textToUse;
       return;
@@ -143,8 +142,7 @@ const modalProps = $state<ModalProps>({
     });
   },
   onNewQuery: (newText: string) => {
-    const wordCount = countWords(newText);
-    const maxWords = 20;
+    const lengthError = getSelectionLengthError(newText);
 
     // Capture current state into history
     const currentState = captureCurrentState();
@@ -159,8 +157,8 @@ const modalProps = $state<ModalProps>({
     startNewSession();
     modalProps.text = newText;
 
-    if (wordCount > maxWords) {
-      modalProps.error = `Selection too long (${wordCount} words). Please select less than ${maxWords} words.`;
+    if (lengthError) {
+      modalProps.error = lengthError;
       modalProps.isProviderError = false;
     } else {
       modalProps.isLoading = true;
@@ -345,8 +343,7 @@ export function openModal(text: string) {
   console.log('Opening modal for:', text);
   ensureOverlayHost();
 
-  const wordCount = countWords(text);
-  const maxWords = 20;
+  const lengthError = getSelectionLengthError(text);
 
   overlayHost!.style.display = 'block';
   overlayHost!.style.visibility = 'hidden';
@@ -368,8 +365,8 @@ export function openModal(text: string) {
   modalProps.isSaving = false;
   modalProps.saveError = '';
 
-  if (wordCount > maxWords) {
-    modalProps.error = `Selection too long (${wordCount} words). Please select less than ${maxWords} words.`;
+  if (lengthError) {
+    modalProps.error = lengthError;
     modalProps.isProviderError = false;
   } else {
     modalProps.isLoading = true;
@@ -385,7 +382,7 @@ export function openModal(text: string) {
     overlayHost!.style.visibility = 'visible';
   }, 0);
 
-  if (wordCount <= maxWords) {
+  if (!lengthError) {
     fetchExplanation(text, modalProps.modelId);
   }
 }

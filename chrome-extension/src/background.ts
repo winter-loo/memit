@@ -4,7 +4,7 @@ import { GeminiExplainer } from './lib/explanation/providers/gemini';
 import { LANGUAGE_NAMES, DEFAULT_LANGUAGE } from './lib/explanation/providers/prompt';
 import { AnkiClient } from './lib/anki/client';
 import type { DictionaryResponse } from './lib/explanation/types';
-import { countWords } from './lib/text-utils';
+import { getSelectionLengthError } from './lib/text-utils';
 
 const memcool = new MemCoolExplainer();
 const openrouter = new OpenRouterExplainer();
@@ -105,9 +105,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'EXPLAIN_TEXT') {
-    const wordCount = countWords(message.text);
-    if (wordCount > 20) {
-      sendResponse({ error: `Text too long (${wordCount} words). Maximum is 20 words.` });
+    const lengthError = getSelectionLengthError(message.text);
+    if (lengthError) {
+      sendResponse({ error: lengthError });
       return false;
     }
 
