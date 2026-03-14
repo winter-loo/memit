@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getTheme, setTheme } from '$lib/theme.svelte';
   import { getSupabaseClient } from '$lib/supabase';
+  import { createCheckoutSession, fetchBillingSummary, reconcileBillingEntitlement } from '$lib/api';
 
   let currentTheme = $derived(getTheme());
 
@@ -9,6 +10,59 @@
   let supabase;
   /** @type {import('@supabase/supabase-js').User | null} */
   let user = $state(null);
+  let billing = $state(null);
+  let billingLoading = $state(false);
+  let billingError = $state('');
+  let checkoutLoadingPlan = $state('');
+  let reconcileLoading = $state(false);
+
+  async function loadBilling() {
+    if (!supabase || !user) return;
+    billingLoading = true;
+    billingError = '';
+    try {
+      billing = await fetchBillingSummary(supabase);
+    } catch (e) {
+      console.error(e);
+      billingError = e instanceof Error ? e.message : 'Failed to load billing summary';
+    } finally {
+      billingLoading = false;
+    }
+  }
+
+  async function handleCheckout(plan) {
+    if (!supabase) return;
+    checkoutLoadingPlan = plan;
+    billingError = '';
+    try {
+      const data = await createCheckoutSession(supabase, plan);
+      if (data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      billingError = 'Stripe checkout URL was not returned.';
+    } catch (e) {
+      console.error(e);
+      billingError = e instanceof Error ? e.message : 'Failed to start checkout';
+    } finally {
+      checkoutLoadingPlan = '';
+    }
+  }
+
+  async function handleReconcile() {
+    if (!supabase) return;
+    reconcileLoading = true;
+    billingError = '';
+    try {
+      await reconcileBillingEntitlement(supabase);
+      await loadBilling();
+    } catch (e) {
+      console.error(e);
+      billingError = e instanceof Error ? e.message : 'Failed to reconcile billing';
+    } finally {
+      reconcileLoading = false;
+    }
+  }
 
   onMount(() => {
     supabase = getSupabaseClient();
@@ -16,18 +70,23 @@
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!active) return;
       const prevUserId = user?.id || null;
       const nextUserId = session?.user?.id || null;
-      if (prevUserId === nextUserId) return;
       user = session?.user ?? null;
+      if (nextUserId) {
+        if (prevUserId !== nextUserId) await loadBilling();
+      } else {
+        billing = null;
+      }
     });
 
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (!active) return;
       user = data.user;
+      if (user) await loadBilling();
     })();
 
     return () => {
@@ -85,6 +144,56 @@
           <span class="material-symbols-outlined text-xl">logout</span>
         </button>
       </div>
+    </div>
+
+    <div
+      class="bg-white dark:bg-card-dark rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800"
+    >
+      <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">credit_card</span>
+        Billing
+      </h2>
+
+      {#if billingError}
+        <div class="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-900/10 dark:text-red-300">
+          {billingError}
+        </div>
+      {/if}
+
+      {#if billingLoading}
+        <div class="text-slate-500 dark:text-slate-400">Loading billing summary...</div>
+      {:else if billing}
+        <div class="space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+              <div class="text-sm text-slate-500 dark:text-slate-400">Effective plan</div>
+              <div class="mt-1 text-2xl font-fredoka font-bold text-slate-900 dark:text-white">{billing.profile?.plan || 'free'}</div>
+              <div class="mt-2 text-sm text-slate-500 dark:text-slate-400">member_until: {billing.profile?.member_until || 'none'}</div>
+              <div class="mt-1 text-sm text-slate-500 dark:text-slate-400">manual lock: {billing.profile?.manual_entitlement_lock ? 'on' : 'off'}</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+              <div class="text-sm text-slate-500 dark:text-slate-400">Subscription fact</div>
+              <div class="mt-1 text-2xl font-fredoka font-bold text-slate-900 dark:text-white">{billing.subscription?.plan || 'none'}</div>
+              <div class="mt-2 text-sm text-slate-500 dark:text-slate-400">status: {billing.subscription?.status || 'none'}</div>
+              <div class="mt-1 text-sm text-slate-500 dark:text-slate-400">period end: {billing.subscription?.current_period_end || 'none'}</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button class="rounded-2xl bg-primary px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50" onclick={() => handleCheckout('plus')} disabled={checkoutLoadingPlan !== ''}>
+              {checkoutLoadingPlan === 'plus' ? 'Starting Plus...' : 'Upgrade to Plus'}
+            </button>
+            <button class="rounded-2xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900" onclick={() => handleCheckout('pro')} disabled={checkoutLoadingPlan !== ''}>
+              {checkoutLoadingPlan === 'pro' ? 'Starting Pro...' : 'Upgrade to Pro'}
+            </button>
+            <button class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50" onclick={handleReconcile} disabled={reconcileLoading}>
+              {reconcileLoading ? 'Reconciling...' : 'Reconcile from Billing'}
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="text-slate-500 dark:text-slate-400">Sign in to see billing details.</div>
+      {/if}
     </div>
 
     <div

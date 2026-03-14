@@ -71,3 +71,36 @@ export async function apiFetchAuthedIfSignedIn(supabase, path, options = {}) {
   if (!token) return null;
   return apiFetchWithBearerToken(path, token, options);
 }
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
+ */
+export async function fetchBillingSummary(supabase) {
+  const res = await apiFetchAuthed(supabase, '/api/billing/summary');
+  return res.json();
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
+ * @param {'plus' | 'pro'} plan
+ */
+export async function createCheckoutSession(supabase, plan) {
+  const res = await apiFetchAuthed(supabase, '/api/billing/stripe/checkout-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      plan,
+      success_url: `${window.location.origin}/billing/success`,
+      cancel_url: `${window.location.origin}/billing/cancel`
+    })
+  });
+  return res.json();
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
+ */
+export async function reconcileBillingEntitlement(supabase) {
+  const res = await apiFetchAuthed(supabase, '/api/billing/reconcile', { method: 'POST' });
+  return res.json();
+}
