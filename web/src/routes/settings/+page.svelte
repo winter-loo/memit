@@ -164,31 +164,33 @@
         <div class="text-slate-500 dark:text-slate-400">Loading billing summary...</div>
       {:else if billing}
         <div class="space-y-4">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-              <div class="text-sm text-slate-500 dark:text-slate-400">Effective plan</div>
-              <div class="mt-1 text-2xl font-fredoka font-bold text-slate-900 dark:text-white">{billing.profile?.plan || 'free'}</div>
-              <div class="mt-2 text-sm text-slate-500 dark:text-slate-400">member_until: {billing.profile?.member_until || 'none'}</div>
-              <div class="mt-1 text-sm text-slate-500 dark:text-slate-400">manual lock: {billing.profile?.manual_entitlement_lock ? 'on' : 'off'}</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-              <div class="text-sm text-slate-500 dark:text-slate-400">Subscription fact</div>
-              <div class="mt-1 text-2xl font-fredoka font-bold text-slate-900 dark:text-white">{billing.subscription?.plan || 'none'}</div>
-              <div class="mt-2 text-sm text-slate-500 dark:text-slate-400">status: {billing.subscription?.status || 'none'}</div>
-              <div class="mt-1 text-sm text-slate-500 dark:text-slate-400">period end: {billing.subscription?.current_period_end || 'none'}</div>
-            </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+            <div class="text-sm text-slate-500 dark:text-slate-400">Current plan</div>
+            <div class="mt-1 text-3xl font-fredoka font-bold text-slate-900 dark:text-white">{billing.profile?.plan || 'free'}</div>
+            {#if billing.profile?.member_until}
+              <div class="mt-2 text-sm text-slate-500 dark:text-slate-400">Access until {billing.profile.member_until}</div>
+            {:else}
+              <div class="mt-2 text-sm text-slate-500 dark:text-slate-400">Your plan is active.</div>
+            {/if}
           </div>
 
           <div class="flex flex-wrap gap-3">
-            <button class="rounded-2xl bg-primary px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50" onclick={() => handleCheckout('plus')} disabled={checkoutLoadingPlan !== ''}>
-              {checkoutLoadingPlan === 'plus' ? 'Starting Plus...' : 'Upgrade to Plus'}
-            </button>
-            <button class="rounded-2xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900" onclick={() => handleCheckout('pro')} disabled={checkoutLoadingPlan !== ''}>
-              {checkoutLoadingPlan === 'pro' ? 'Starting Pro...' : 'Upgrade to Pro'}
-            </button>
-            <button class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50" onclick={handleReconcile} disabled={reconcileLoading}>
-              {reconcileLoading ? 'Reconciling...' : 'Reconcile from Billing'}
-            </button>
+            {#if (billing.profile?.plan || 'free') === 'free'}
+              <button class="rounded-2xl bg-primary px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50" onclick={() => handleCheckout('plus')} disabled={checkoutLoadingPlan !== ''}>
+                {checkoutLoadingPlan === 'plus' ? 'Starting Plus...' : 'Upgrade to Plus'}
+              </button>
+              <button class="rounded-2xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900" onclick={() => handleCheckout('pro')} disabled={checkoutLoadingPlan !== ''}>
+                {checkoutLoadingPlan === 'pro' ? 'Starting Pro...' : 'Upgrade to Pro'}
+              </button>
+            {:else if (billing.profile?.plan || 'free') === 'plus'}
+              <button class="rounded-2xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900" onclick={() => handleCheckout('pro')} disabled={checkoutLoadingPlan !== ''}>
+                {checkoutLoadingPlan === 'pro' ? 'Starting Pro...' : 'Upgrade to Pro'}
+              </button>
+            {:else}
+              <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/10 dark:text-emerald-300">
+                You are on Pro.
+              </div>
+            {/if}
           </div>
         </div>
       {:else}
