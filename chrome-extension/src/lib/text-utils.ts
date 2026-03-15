@@ -44,9 +44,5 @@ export function getSelectionLengthError(text: string): string | null {
     return `Selection too long (${metrics.words} words). Please select less than ${MAX_SELECTION_WORDS} words.`;
   }
 
-  if (metrics.chars > MAX_SELECTION_CHARS) {
-    return `Selection too long (${metrics.chars} chars). Please keep it within ${MAX_SELECTION_CHARS} characters.`;
-  }
-
   return null;
 }
