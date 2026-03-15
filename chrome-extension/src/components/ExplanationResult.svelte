@@ -14,6 +14,7 @@
     TriangleAlert,
   } from '@lucide/svelte';
   import AudioLines from './icons/AudioLines.svelte';
+  import { speakText } from '../lib/tts';
 
   interface Props {
     result: DictionaryResponse;
@@ -43,26 +44,21 @@
   });
 
   let ttsState = $state<'idle' | 'loading' | 'speaking'>('idle');
+  let ttsEngine = $state<string>('');
 
-  function speak() {
+  async function speak() {
     if (ttsState !== 'idle') return;
     ttsState = 'loading';
-    chrome.runtime.sendMessage({ type: 'SPEAK_TEXT', text: result.term });
+    ttsEngine = '';
+    try {
+      const engine = await speakText(result.term, () => { ttsState = 'speaking'; });
+      ttsEngine = engine;
+    } catch (err) {
+      console.error('TTS failed:', err);
+    } finally {
+      ttsState = 'idle';
+    }
   }
-
-  $effect(() => {
-    const listener = (message: { type: string; status: string }) => {
-      if (message.type === 'TTS_EVENT') {
-        if (message.status === 'start') {
-          ttsState = 'speaking';
-        } else if (['end', 'interrupted', 'cancelled', 'error'].includes(message.status)) {
-          ttsState = 'idle';
-        }
-      }
-    };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => chrome.runtime.onMessage.removeListener(listener);
-  });
 </script>
 
 <div class="explanation-container">
