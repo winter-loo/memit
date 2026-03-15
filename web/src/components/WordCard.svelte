@@ -1,7 +1,8 @@
 <script>
   import { onDestroy } from 'svelte';
+  import { speakText, stopBrowserTts } from '$lib/tts';
 
-  let { term, onDelete, onRemoved } = $props();
+  let { term, supabase, onDelete, onRemoved } = $props();
 
   let isPhrase = $derived((term.text || '').trim().split(/\s+/).length >= 2);
 
@@ -11,6 +12,32 @@
   let deleting = $state(false);
   let dissolving = $state(false);
   let deleteError = $state(false);
+
+  /** @type {'idle' | 'loading' | 'speaking'} */
+  let ttsState = $state('idle');
+
+  /** @param {MouseEvent} e */
+  async function handleSpeakClick(e) {
+    e.stopPropagation();
+    if (ttsState !== 'idle') return;
+    const text = term.text;
+    if (!text) return;
+    ttsState = 'loading';
+    try {
+      await speakText(supabase, text, {
+        lang: 'en-US',
+        onStart: () => { ttsState = 'speaking'; },
+      });
+    } catch (err) {
+      console.error('TTS failed:', err);
+    } finally {
+      ttsState = 'idle';
+    }
+  }
+
+  onDestroy(() => {
+    stopBrowserTts();
+  });
 
   /** @type {'idle' | 'pending' | 'success' | 'fail'} */
   let phase = $state('idle');
@@ -334,13 +361,86 @@
         <span class="material-symbols-outlined text-2xl">{deleteError ? 'error' : 'delete'}</span>
       </button>
       <button
-        onclick={(e) => {
-          e.stopPropagation();
-        }}
-        class="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-300 dark:text-text-muted border-2 border-slate-100 dark:border-white/10 hover:text-accent hover:border-accent/30 hover:bg-accent/5 transition-all cursor-pointer"
+        onclick={handleSpeakClick}
+        disabled={ttsState !== 'idle'}
+        class={ttsState === 'loading'
+          ? 'tts-btn tts-loading'
+          : ttsState === 'speaking'
+            ? 'tts-btn tts-speaking'
+            : 'tts-btn tts-idle'}
       >
         <span class="material-symbols-outlined text-2xl">volume_up</span>
       </button>
     </div>
   </div>
 </article>
+
+<style>
+  .tts-btn {
+    position: relative;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+    border: 2px solid transparent;
+    background: transparent;
+  }
+
+  /* Idle */
+  .tts-idle {
+    color: #cbd5e1;
+    border-color: #f1f5f9;
+  }
+  :global(.dark) .tts-idle {
+    color: var(--text-muted, #94a3b8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .tts-idle:hover {
+    color: var(--accent, #f28b0d);
+    border-color: rgba(242, 139, 13, 0.3);
+    background: rgba(242, 139, 13, 0.05);
+  }
+
+  /* Loading: conic gradient spinning border */
+  .tts-loading {
+    color: var(--accent, #f28b0d);
+    border-color: transparent;
+    background:
+      padding-box linear-gradient(to right, var(--card-bg, #fff), var(--card-bg, #fff)),
+      border-box conic-gradient(from var(--spinner-angle, 0deg), transparent 40%, var(--accent, #f28b0d) 100%);
+    animation: tts-spin 0.8s linear infinite;
+    cursor: wait;
+  }
+  :global(.dark) .tts-loading {
+    background:
+      padding-box linear-gradient(to right, var(--card-dark, #1e293b), var(--card-dark, #1e293b)),
+      border-box conic-gradient(from var(--spinner-angle, 0deg), transparent 40%, var(--accent, #f28b0d) 100%);
+  }
+
+  @keyframes tts-spin {
+    to { --spinner-angle: 360deg; }
+  }
+
+  @property --spinner-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  /* Speaking: solid accent highlight */
+  .tts-speaking {
+    color: var(--accent, #f28b0d);
+    border-color: var(--accent, #f28b0d);
+    background: rgba(242, 139, 13, 0.1);
+    animation: tts-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes tts-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+</style>

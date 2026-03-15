@@ -4,23 +4,10 @@
   import { apiFetchAuthedIfSignedIn } from '$lib/api';
   import { getSupabaseClient } from '$lib/supabase';
 
-  let dailyStudied = $state(0);
   let deckStats = $state({ new_count: 0, learning_count: 0, review_count: 0 });
-  const dailyGoal = 5;
   const currentYear = new Date().getFullYear();
   /** @type {import('@supabase/supabase-js').SupabaseClient} */
   let supabase;
-
-  async function loadDailyTotal() {
-    try {
-      const res = await apiFetchAuthedIfSignedIn(supabase, '/api/note/studied_today');
-      if (!res) return;
-      const data = await res.json();
-      dailyStudied = coerceToInt(data?.msg ?? data);
-    } catch (e) {
-      console.error('Failed to load daily total', e);
-    }
-  }
 
   async function loadDeckStats() {
     try {
@@ -65,7 +52,6 @@
 
   onMount(() => {
     supabase = getSupabaseClient();
-    loadDailyTotal();
     loadDeckStats();
   });
 </script>

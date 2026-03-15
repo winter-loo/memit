@@ -1,8 +1,9 @@
 <script>
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
 
   function goSettings() {
-    goto('/settings');
+    goto(resolve('/settings'));
   }
 </script>
 
@@ -25,7 +26,7 @@
       <button class="rounded-2xl bg-primary px-5 py-3 font-semibold text-white hover:opacity-90" onclick={goSettings}>
         Go to Settings
       </button>
-      <a class="rounded-2xl border border-slate-200 dark:border-slate-700 px-5 py-3 font-semibold text-slate-700 dark:text-slate-200" href="/">
+      <a class="rounded-2xl border border-slate-200 dark:border-slate-700 px-5 py-3 font-semibold text-slate-700 dark:text-slate-200" href={resolve('/')}>
         Back Home
       </a>
     </div>

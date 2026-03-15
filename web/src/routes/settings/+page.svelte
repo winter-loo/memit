@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { getTheme, setTheme } from '$lib/theme.svelte';
   import { getSupabaseClient } from '$lib/supabase';
-  import { createCheckoutSession, fetchBillingSummary, reconcileBillingEntitlement } from '$lib/api';
+  import { createCheckoutSession, fetchBillingSummary } from '$lib/api';
 
   let currentTheme = $derived(getTheme());
 
@@ -10,12 +10,11 @@
   let supabase;
   /** @type {import('@supabase/supabase-js').User | null} */
   let user = $state(null);
+  /** @type {{ profile?: { plan?: string; member_until?: string } } | null} */
   let billing = $state(null);
   let billingLoading = $state(false);
   let billingError = $state('');
   let checkoutLoadingPlan = $state('');
-  let reconcileLoading = $state(false);
-
   async function loadBilling() {
     if (!supabase || !user) return;
     billingLoading = true;
@@ -30,6 +29,7 @@
     }
   }
 
+  /** @param {'plus' | 'pro'} plan */
   async function handleCheckout(plan) {
     if (!supabase) return;
     checkoutLoadingPlan = plan;
@@ -46,21 +46,6 @@
       billingError = e instanceof Error ? e.message : 'Failed to start checkout';
     } finally {
       checkoutLoadingPlan = '';
-    }
-  }
-
-  async function handleReconcile() {
-    if (!supabase) return;
-    reconcileLoading = true;
-    billingError = '';
-    try {
-      await reconcileBillingEntitlement(supabase);
-      await loadBilling();
-    } catch (e) {
-      console.error(e);
-      billingError = e instanceof Error ? e.message : 'Failed to reconcile billing';
-    } finally {
-      reconcileLoading = false;
     }
   }
 
@@ -186,10 +171,6 @@
               <button class="rounded-2xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900" onclick={() => handleCheckout('pro')} disabled={checkoutLoadingPlan !== ''}>
                 {checkoutLoadingPlan === 'pro' ? 'Starting Pro...' : 'Upgrade to Pro'}
               </button>
-            {:else}
-              <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/10 dark:text-emerald-300">
-                You are on Pro.
-              </div>
             {/if}
           </div>
         </div>

@@ -1,8 +1,10 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { apiFetch } from '$lib/api';
   import { termDetailsCache } from '$lib/cache';
   import { withPreparedFields } from '$lib/notes';
+  import { getSupabaseClient } from '$lib/supabase';
+  import { speakText, stopBrowserTts } from '$lib/tts';
   import { formatRelativeTime } from '$lib/time';
 
   let { note, onClose } = $props();
@@ -13,6 +15,10 @@
   let details = $state(null);
   let loading = $state(true);
   let error = $state('');
+  /** @type {import('@supabase/supabase-js').SupabaseClient | undefined} */
+  let supabase = $state();
+  let ttsState = $state('idle');
+  let ttsEngine = $state('');
 
   // Swipe detection
   let touchStartX = 0;
@@ -84,6 +90,25 @@
     };
   }
 
+  async function speakTerm() {
+    const text = details?.term || note?.fields?.term || '';
+    if (!text || ttsState !== 'idle') return;
+    ttsState = 'loading';
+    ttsEngine = '';
+    try {
+      const result = await speakText(supabase, text, {
+        lang: 'en-US',
+        onStart: () => { ttsState = 'speaking'; },
+      });
+      ttsEngine = result?.engine || '';
+    } catch (e) {
+      console.error(e);
+      ttsEngine = '';
+    } finally {
+      ttsState = 'idle';
+    }
+  }
+
   async function loadDetails() {
     error = '';
     const prepared = withPreparedFields(note || {});
@@ -123,7 +148,12 @@
   }
 
   onMount(() => {
+    supabase = getSupabaseClient();
     loadDetails();
+  });
+
+  onDestroy(() => {
+    stopBrowserTts();
   });
 </script>
 
@@ -175,9 +205,23 @@
             ><span class="material-symbols-outlined">more_horiz</span></button
           >
         </div>
-        <h2 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white mb-2">
-          {details?.term || note.fields?.term || 'Unknown'}
-        </h2>
+        <div class="flex items-center gap-3 mb-2">
+          <h2 class="text-3xl font-fredoka font-bold text-slate-800 dark:text-white">
+            {details?.term || note.fields?.term || 'Unknown'}
+          </h2>
+          <button
+            class={ttsState === 'loading'
+              ? 'tts-detail-btn tts-detail-loading'
+              : ttsState === 'speaking'
+                ? 'tts-detail-btn tts-detail-speaking'
+                : 'tts-detail-btn tts-detail-idle'}
+            onclick={speakTerm}
+            disabled={ttsState !== 'idle'}
+            title={ttsEngine ? `Spoken with ${ttsEngine}` : 'Speak'}
+          >
+            <span class="material-symbols-outlined text-2xl">volume_up</span>
+          </button>
+        </div>
         <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html highlightText(
@@ -376,5 +420,67 @@
   }
   .last-thread-item .thread-line {
     display: none;
+  }
+
+  .tts-detail-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+    border: 2px solid transparent;
+    background: transparent;
+  }
+
+  .tts-detail-idle {
+    color: #475569;
+    background: #f1f5f9;
+  }
+  :global(.dark) .tts-detail-idle {
+    color: #cbd5e1;
+    background: #1e293b;
+  }
+  .tts-detail-idle:hover {
+    color: var(--primary, #f28b0d);
+  }
+
+  .tts-detail-loading {
+    color: var(--primary, #f28b0d);
+    border-color: transparent;
+    background:
+      padding-box linear-gradient(to right, #f1f5f9, #f1f5f9),
+      border-box conic-gradient(from var(--spinner-angle, 0deg), transparent 40%, var(--primary, #f28b0d) 100%);
+    animation: tts-detail-spin 0.8s linear infinite;
+    cursor: wait;
+  }
+  :global(.dark) .tts-detail-loading {
+    background:
+      padding-box linear-gradient(to right, #1e293b, #1e293b),
+      border-box conic-gradient(from var(--spinner-angle, 0deg), transparent 40%, var(--primary, #f28b0d) 100%);
+  }
+
+  @keyframes tts-detail-spin {
+    to { --spinner-angle: 360deg; }
+  }
+
+  @property --spinner-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  .tts-detail-speaking {
+    color: var(--primary, #f28b0d);
+    background: rgba(242, 139, 13, 0.15);
+    border-color: var(--primary, #f28b0d);
+    animation: tts-detail-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes tts-detail-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
   }
 </style>

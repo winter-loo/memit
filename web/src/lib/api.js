@@ -75,6 +75,14 @@ export async function apiFetchAuthedIfSignedIn(supabase, path, options = {}) {
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
  */
+export async function fetchAuthProfile(supabase) {
+  const res = await apiFetchAuthed(supabase, '/api/auth/profile');
+  return res.json();
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
+ */
 export async function fetchBillingSummary(supabase) {
   const res = await apiFetchAuthed(supabase, '/api/billing/summary');
   return res.json();
@@ -103,4 +111,17 @@ export async function createCheckoutSession(supabase, plan) {
 export async function reconcileBillingEntitlement(supabase) {
   const res = await apiFetchAuthed(supabase, '/api/billing/reconcile', { method: 'POST' });
   return res.json();
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | undefined | null} supabase
+ * @param {{ text: string, speaker?: string, encoding?: string, sample_rate?: number, speed_ratio?: number }} payload
+ */
+export async function synthesizeTts(supabase, payload) {
+  const res = await apiFetchAuthed(supabase, '/api/tts/synthesize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return res.blob();
 }

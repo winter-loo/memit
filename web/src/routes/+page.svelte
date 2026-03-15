@@ -279,6 +279,7 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div onmousedown={handleMouseDown} onclick={() => handleCardClick(note)}>
               <WordCard
+                {supabase}
                 term={{
                   text: note._term || 'Unknown',
                   addedTime: formatRelativeTime(note.mtimeSecs),

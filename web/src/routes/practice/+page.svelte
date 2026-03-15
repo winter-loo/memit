@@ -264,12 +264,6 @@
     }, 400);
   }
 
-  function nextCard() {
-    if (advancing) return;
-    advancing = true;
-    loadNextCard();
-  }
-
   let currentNote = $derived(currentCardData?.note || { id: -1, fields: {} });
   let preparedCurrentNote = $derived(withPreparedFields(currentNote));
   let prompt = $derived(preparedCurrentNote._term || '');
