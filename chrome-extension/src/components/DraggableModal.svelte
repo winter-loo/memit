@@ -65,7 +65,7 @@
         if (Number.isFinite(x)) {
           try {
             localStorage.setItem('memit-modal-x', String(x));
-          } catch {}
+          } catch { /* ignore localStorage errors */ }
         }
       }
     }

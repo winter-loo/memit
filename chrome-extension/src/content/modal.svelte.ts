@@ -398,7 +398,7 @@ function getSavedModalX(): number | null {
       const parsed = parseFloat(saved);
       if (Number.isFinite(parsed)) return parsed;
     }
-  } catch {}
+  } catch { /* ignore localStorage errors */ }
   return null;
 }
 

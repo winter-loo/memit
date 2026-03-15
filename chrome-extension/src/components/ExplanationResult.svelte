@@ -44,15 +44,12 @@
   });
 
   let ttsState = $state<'idle' | 'loading' | 'speaking'>('idle');
-  let ttsEngine = $state<string>('');
 
   async function speak() {
     if (ttsState !== 'idle') return;
     ttsState = 'loading';
-    ttsEngine = '';
     try {
-      const engine = await speakText(result.term, () => { ttsState = 'speaking'; });
-      ttsEngine = engine;
+      await speakText(result.term, () => { ttsState = 'speaking'; });
     } catch (err) {
       console.error('TTS failed:', err);
     } finally {
@@ -290,14 +287,6 @@
   .icon-btn-small.speaking {
     color: var(--primary-color);
     /* Speaking: Animate (via prop) AND colorize */
-  }
-
-  .icon-btn-small.success {
-    color: #22c55e; /* Green */
-  }
-
-  .icon-btn-small.error {
-    color: #ef4444; /* Red */
   }
 
   /* Simple Def Card */
